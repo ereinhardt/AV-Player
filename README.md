@@ -8,3 +8,9 @@ by Erik Anton Reinhardt.<br>
 ```bash
 node server.js
 ```
+
+Set Port in server.js
+
+```bash
+this.webPort = 3001; // Web-Server Port
+```
