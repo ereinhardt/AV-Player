@@ -11,8 +11,7 @@ node server.js
 ```
 
 **Note**: <br> 
-Set port (to open the Web Interface) in `server.js`:
-
+The web interface opens by default at `localhost:3001`. Change the port in `server.js` if necessary:
 ```bash
 this.webPort = 3001; // Web-Server Port
 ```
