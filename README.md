@@ -1,6 +1,6 @@
 # A/V-Player (v.1.0-10-2025)
 
-A/V player with 16-channel audio and 8-channel video (each video track includes 2-channel audio), individual audio device/channel/volume mapping, a master timeline with loop function, Art-Net timecode, and UDP triggers (e.g., for BrightSign devices, with an autorun.brs script included for receiving UDP triggers).
+"A/V-Player" with 16-channel audio and 8-channel video (each video track includes 2-channel audio), individual audio device/channel/volume mapping, a master timeline with loop function, Art-Net timecode, and UDP triggers (e.g., for BrightSign devices, with an autorun.brs script included for receiving UDP triggers).
 
 by Erik Anton Reinhardt.<br>
 [MIT License]
