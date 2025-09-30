@@ -17,3 +17,8 @@ The web interface opens by default at `localhost:3001`. Change the port in `serv
 ```js
 (line 20) this.webPort = 3001; // Web-Server Port
 ```
+
+## Known Bugs (TODO):
+
+- While a video track is waiting for the loop to restart, the video canvas shows the last frame instead of just black.
+- When adding a longer audio or video file to an existing loop, the loop time does not adapt to the new longest file.
