@@ -6,6 +6,7 @@ by Erik Anton Reinhardt.<br>
 ## Start (A/V-Player) Software:
 
 ```bash
+npm i
 node server.js
 ```
 
