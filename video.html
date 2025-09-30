@@ -76,6 +76,7 @@
 </head>
 <body class="video-window-body">
     <video id="video-player" class="video-window-video" muted style="width: 100%; height: 100%; object-fit: contain; background: black;"></video>
+    <div id="black-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10;"></div>
 
     <script>
         let isReceivingSeek = false;
@@ -148,6 +149,10 @@
                         break;
                         
                     case 'PLAY':
+                        let blackOverlayPlay = document.getElementById('black-overlay');
+                        if (blackOverlayPlay) {
+                            blackOverlayPlay.style.display = 'none';
+                        }
                         video.play().catch(e => {});
                         break;
                         
@@ -182,6 +187,10 @@
                         break;
                         
                     case 'RESTART_VIDEO':
+                        let blackOverlayRestart = document.getElementById('black-overlay');
+                        if (blackOverlayRestart) {
+                            blackOverlayRestart.style.display = 'none';
+                        }
                         video.currentTime = 0;
                         if (!video.paused) {
                             video.play().catch(e => {});
@@ -260,6 +269,20 @@
             
             video.addEventListener('dblclick', (e) => {
                 e.preventDefault();
+            });
+            
+            // Show black overlay when video ends instead of showing any frame
+            video.addEventListener('ended', () => {
+                const blackOverlay = document.getElementById('black-overlay');
+                if (blackOverlay) {
+                    blackOverlay.style.display = 'block';
+                }
+                // Also post message to parent about video ending
+                if (window.opener && !isReceivingSeek) {
+                    try {
+                        window.opener.postMessage({ type: 'VIDEO_ENDED' }, window.location.origin);
+                    } catch (e) {}
+                }
             });
             
             if (window.opener) {
