@@ -40,7 +40,7 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
                     destination.channelCount = maxChannels;
                     destination.channelCountMode = 'explicit';
                     destination.channelInterpretation = 'discrete';
-                    console.log(`✅ Destination configured for ${maxChannels} discrete channels`);
+                    console.log(`Destination configured for ${maxChannels} discrete channels`);
                 } catch (error) {
                     console.warn('Could not configure destination:', error);
                     // Fallback to stereo
