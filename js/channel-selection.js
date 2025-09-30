@@ -42,14 +42,14 @@ function setupChannelSelection(tracks, audioSources, audioContextContainer) {
                         
                         // Debug: Log merger and destination info
                         const context = audioContextContainer.contexts[index];
-                        console.log(`🎯 Channel routing for track ${index}:`);
-                        console.log(`   → Target channel: ${newChannel + 1} (0-indexed: ${newChannel})`);
-                        console.log(`   → Merger channels: ${merger.numberOfInputs}`);
-                        console.log(`   → Destination max: ${context.destination.maxChannelCount}`);
-                        console.log(`   → Destination active: ${context.destination.channelCount}`);
+                        console.log(`Channel routing for track ${index}:`);
+                        console.log(`Target channel: ${newChannel + 1} (0-indexed: ${newChannel})`);
+                        console.log(`Merger channels: ${merger.numberOfInputs}`);
+                        console.log(`Destination max: ${context.destination.maxChannelCount}`);
+                        console.log(`Destination active: ${context.destination.channelCount}`);
                         
                         gainNode.connect(merger, 0, newChannel);
-                        console.log(`✅ Audio track ${index} routed to channel ${newChannel + 1}`);
+                        console.log(`Audio track ${index} routed to channel ${newChannel + 1}`);
                     }
                 });
             }
