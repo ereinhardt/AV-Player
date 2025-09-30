@@ -1,10 +1,11 @@
-' UDP Video Trigger Script - Listens for UDP messages and plays video
+' UDP Video Trigger Script - Listens for UDP Trigger-Message and plays video.
 ' by Erik Anton Reinhardt.
 
 ' Usage
 ' Place this script at the root of a blank microSD card.
-' Typically this file would be renamed to autorun.brs so it starts automatically.
-' Send a UDP message "START" to trigger video playback.
+' Typically this file would be named to autorun.brs so it starts automatically.
+' Put one video file at the root of a blank microSD card as well.
+' Send a UDP Trigger-Message (e.g. "START") to trigger video playback.
 ' Make adjustments to the variables below.
 
 sub Main()
