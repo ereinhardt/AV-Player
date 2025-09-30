@@ -1,6 +1,5 @@
 ' UDP Video Trigger Script - Listens for UDP messages and plays video
-' This script listens for incoming UDP messages and plays a video when a trigger message is received.
-' by Erik Anton Reinhart.
+' by Erik Anton Reinhardt.
 
 ' Usage
 ' Place this script at the root of a blank microSD card.
