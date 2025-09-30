@@ -46,11 +46,11 @@ function recreateAudioConnection(trackIndex, audioElements, audioSources, audioC
         // Update audioSources array
         audioSources[trackIndex] = { audio, source, merger, gainNode };
         
-        console.log(`✅ Successfully recreated audio connection for track ${trackIndex}`);
+        console.log(`Successfully recreated audio connection for track ${trackIndex}`);
         return true;
         
     } catch (error) {
-        console.error(`❌ Failed to recreate audio connection for track ${trackIndex}:`, error);
+        console.error(`Failed to recreate audio connection for track ${trackIndex}:`, error);
         return false;
     }
 }
@@ -63,7 +63,7 @@ function addDeviceRecreateButton(track, trackIndex, audioElements, audioSources,
     
     const button = document.createElement('button');
     button.className = 'recreate-device-btn';
-    button.textContent = '🔄 Reconnect Device';
+    button.textContent = 'Reconnect Device';
     button.title = 'Recreate audio connection with selected device';
     button.style.marginLeft = '10px';
     button.style.fontSize = '12px';
