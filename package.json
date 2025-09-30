@@ -1,7 +1,7 @@
 {
-  "name": "artnet-timeline-server",
+  "name": "artnet-udp-timeline-server",
   "version": "1.0.0",
-  "description": "Art-Net SMPTE Timecode Timeline Server with Audio/Video Player",
+  "description": "",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
