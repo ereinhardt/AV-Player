@@ -12,5 +12,5 @@ node server.js
 Set Port in server.js
 
 ```bash
-this.webPort = 3001; // Web-Server Port
+this.webPort = 3001; // Web-Server Port to open the Browser-UI
 ```
