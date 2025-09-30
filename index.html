@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A/V Player</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>A/V Player</h1>
+        
+        <div class="controls">
+            <div class="controls-title">Master Controls:</div>
+            <div class="master-controls">
+                <button id="play-pause-button">Play</button>
+                <button id="reset-button">Reset</button>
+                <div class="volume-control master-volume-control">
+                    <label for="master-volume-slider">Master:</label>
+                    <input type="range" id="master-volume-slider" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                    <span id="master-volume-db" class="volume-db">0.0 dB</span>
+                    <input type="checkbox" id="master-mute-checkbox" class="mute-checkbox">
+                    <label for="master-mute-checkbox">Mute</label>
+                </div>
+                <div class="loop-container">
+                    <input type="checkbox" id="loop-checkbox">
+                    <label for="loop-checkbox">Loop</label>
+                </div>
+                <div class="timeline-wrapper master-timeline-wrapper">
+                    <progress id="master-timeline-progress" class="timeline-progress" max="100" value="0"></progress>
+                    <span id="master-time-display" class="time-display">00:00 / 00:00 <span id="smpte-timecode">(00:00:00:00)</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="artnet-settings">
+            <div class="artnet-title">Art-Net Timecode (via UDP) Settings: <span id="artnet-status-display" class="artnet-status">(127.0.0.1:6454 / 25fps / 00:00:00:00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="artnet-enabled" checked>
+                <label for="artnet-enabled">Enable Art-Net Timecode</label>
+            </div>
+            <div class="setting-group">
+                <label for="fps-select">FPS:</label>
+                <select id="fps-select">
+                    <option value="24">24 fps</option>
+                    <option value="25" selected>25 fps</option>
+                    <option value="29.97">29.97 fps</option>
+                    <option value="30">30 fps</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="artnet-ip">IP Address:</label>
+                <select id="artnet-ip-preset" onchange="updateIPField()">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="artnet-ip" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="artnet-port">Port:</label>
+                <input type="number" id="artnet-port" min="1" max="65535" value="6457" title="Art-Net UDP port (for real Art-Net devices). Debug WebSocket stays on 8080.">
+            </div>
+            <div class="setting-group">
+                <button id="apply-settings-btn" class="apply-settings-btn">Apply Settings</button>
+                <span id="settings-status" class="settings-status"></span>
+            </div>
+        </div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger Settings: <span id="udp-trigger-status" class="udp-trigger-status">(Auto Broadcast:9998 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled">
+                <label for="udp-trigger-enabled">Enable UDP Trigger</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip">IP Address:</label>
+                <select id="udp-trigger-ip-preset" onchange="updateUDPIPField()">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port">Port:</label>
+                <input type="number" id="udp-trigger-port" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message">Message:</label>
+                <input type="text" id="udp-trigger-message" placeholder="START" value="START" title="Message to send (e.g., START/STOP)">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div id="track-list">
+            <!-- 16 static audio slots will be generated here by JS, but let's create them statically -->
+            <div class="track" data-index="0">
+                <div class="track-info">
+                    <label for="file-input-0">Audio Track 1:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-0" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-0').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-0">Audio Device:</label>
+                        <select id="audio-device-select-0" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-0">Channel:</label>
+                        <select id="channel-select-0" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-0">Volume:</label>
+                            <input type="range" id="volume-slider-0" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-0" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-0" class="mute-checkbox">
+                            <label for="mute-checkbox-0">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="1">
+                <div class="track-info">
+                    <label for="file-input-1">Audio Track 2:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-1" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-1').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-1">Audio Device:</label>
+                        <select id="audio-device-select-1" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-1">Channel:</label>
+                        <select id="channel-select-1" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-1">Volume:</label>
+                            <input type="range" id="volume-slider-1" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-1" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-1" class="mute-checkbox">
+                            <label for="mute-checkbox-1">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="2">
+                <div class="track-info">
+                    <label for="file-input-2">Audio Track 3:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-2" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-2').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-2">Audio Device:</label>
+                        <select id="audio-device-select-2" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-2">Channel:</label>
+                        <select id="channel-select-2" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-2">Volume:</label>
+                            <input type="range" id="volume-slider-2" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-2" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-2" class="mute-checkbox">
+                            <label for="mute-checkbox-2">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="3">
+                <div class="track-info">
+                    <label for="file-input-3">Audio Track 4:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-3" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-3').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-3">Audio Device:</label>
+                        <select id="audio-device-select-3" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-3">Channel:</label>
+                        <select id="channel-select-3" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-3">Volume:</label>
+                            <input type="range" id="volume-slider-3" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-3" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-3" class="mute-checkbox">
+                            <label for="mute-checkbox-3">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="4">
+                <div class="track-info">
+                    <label for="file-input-4">Audio Track 5:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-4" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-4').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-4">Audio Device:</label>
+                        <select id="audio-device-select-4" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-4">Channel:</label>
+                        <select id="channel-select-4" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-4">Volume:</label>
+                            <input type="range" id="volume-slider-4" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-4" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-4" class="mute-checkbox">
+                            <label for="mute-checkbox-4">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="5">
+                <div class="track-info">
+                    <label for="file-input-5">Audio Track 6:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-5" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-5').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-5">Audio Device:</label>
+                        <select id="audio-device-select-5" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-5">Channel:</label>
+                        <select id="channel-select-5" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-5">Volume:</label>
+                            <input type="range" id="volume-slider-5" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-5" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-5" class="mute-checkbox">
+                            <label for="mute-checkbox-5">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="6">
+                <div class="track-info">
+                    <label for="file-input-6">Audio Track 7:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-6" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-6').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-6">Audio Device:</label>
+                        <select id="audio-device-select-6" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-6">Channel:</label>
+                        <select id="channel-select-6" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-6">Volume:</label>
+                            <input type="range" id="volume-slider-6" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-6" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-6" class="mute-checkbox">
+                            <label for="mute-checkbox-6">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="7">
+                <div class="track-info">
+                    <label for="file-input-7">Audio Track 8:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-7" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-7').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-7">Audio Device:</label>
+                        <select id="audio-device-select-7" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-7">Channel:</label>
+                        <select id="channel-select-7" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-7">Volume:</label>
+                            <input type="range" id="volume-slider-7" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-7" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-7" class="mute-checkbox">
+                            <label for="mute-checkbox-7">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="8">
+                <div class="track-info">
+                    <label for="file-input-8">Audio Track 9:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-8" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-8').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-8">Audio Device:</label>
+                        <select id="audio-device-select-8" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-8">Channel:</label>
+                        <select id="channel-select-8" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-8">Volume:</label>
+                            <input type="range" id="volume-slider-8" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-8" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-8" class="mute-checkbox">
+                            <label for="mute-checkbox-8">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="9">
+                <div class="track-info">
+                    <label for="file-input-9">Audio Track 10:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-9" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-9').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-9">Audio Device:</label>
+                        <select id="audio-device-select-9" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-9">Channel:</label>
+                        <select id="channel-select-9" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-9">Volume:</label>
+                            <input type="range" id="volume-slider-9" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-9" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-9" class="mute-checkbox">
+                            <label for="mute-checkbox-9">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="10">
+                <div class="track-info">
+                    <label for="file-input-10">Audio Track 11:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-10" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-10').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-10">Audio Device:</label>
+                        <select id="audio-device-select-10" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-10">Channel:</label>
+                        <select id="channel-select-10" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-10">Volume:</label>
+                            <input type="range" id="volume-slider-10" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-10" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-10" class="mute-checkbox">
+                            <label for="mute-checkbox-10">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="11">
+                <div class="track-info">
+                    <label for="file-input-11">Audio Track 12:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-11" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-11').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-11">Audio Device:</label>
+                        <select id="audio-device-select-11" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-11">Channel:</label>
+                        <select id="channel-select-11" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-11">Volume:</label>
+                            <input type="range" id="volume-slider-11" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-11" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-11" class="mute-checkbox">
+                            <label for="mute-checkbox-11">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="12">
+                <div class="track-info">
+                    <label for="file-input-12">Audio Track 13:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-12" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-12').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-12">Audio Device:</label>
+                        <select id="audio-device-select-12" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-12">Channel:</label>
+                        <select id="channel-select-12" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-12">Volume:</label>
+                            <input type="range" id="volume-slider-12" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-12" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-12" class="mute-checkbox">
+                            <label for="mute-checkbox-12">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="13">
+                <div class="track-info">
+                    <label for="file-input-13">Audio Track 14:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-13" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-13').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-13">Audio Device:</label>
+                        <select id="audio-device-select-13" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-13">Channel:</label>
+                        <select id="channel-select-13" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-13">Volume:</label>
+                            <input type="range" id="volume-slider-13" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-13" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-13" class="mute-checkbox">
+                            <label for="mute-checkbox-13">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="14">
+                <div class="track-info">
+                    <label for="file-input-14">Audio Track 15:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-14" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-14').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-14">Audio Device:</label>
+                        <select id="audio-device-select-14" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-14">Channel:</label>
+                        <select id="channel-select-14" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-14">Volume:</label>
+                            <input type="range" id="volume-slider-14" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-14" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-14" class="mute-checkbox">
+                            <label for="mute-checkbox-14">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="15">
+                <div class="track-info">
+                    <label for="file-input-15">Audio Track 16:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-15" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-15').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-15">Audio Device:</label>
+                        <select id="audio-device-select-15" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-15">Channel:</label>
+                        <select id="channel-select-15" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-15">Volume:</label>
+                            <input type="range" id="volume-slider-15" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-15" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-15" class="mute-checkbox">
+                            <label for="mute-checkbox-15">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Video Track -->
+            <div class="track video-track" data-index="16">
+                <div class="track-info">
+                    <label for="file-input-16">Video Track 1:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-16" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-16').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-16" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-16" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-16" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-16-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-16-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-16-left">Volume:</label>
+                                <input type="range" id="volume-slider-16-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-16-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-16-left" class="mute-checkbox">
+                                <label for="mute-checkbox-16-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-16-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-16-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-16-right">Volume:</label>
+                                <input type="range" id="volume-slider-16-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-16-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-16-right" class="mute-checkbox">
+                                <label for="mute-checkbox-16-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track video-track" data-index="17">
+                <div class="track-info">
+                    <label for="file-input-17">Video Track 2:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-17" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-17').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-17" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-17" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-17" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-17-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-17-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-17-left">Volume:</label>
+                                <input type="range" id="volume-slider-17-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-17-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-17-left" class="mute-checkbox">
+                                <label for="mute-checkbox-17-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-17-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-17-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-17-right">Volume:</label>
+                                <input type="range" id="volume-slider-17-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-17-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-17-right" class="mute-checkbox">
+                                <label for="mute-checkbox-17-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track video-track" data-index="18">
+                <div class="track-info">
+                    <label for="file-input-18">Video Track 3:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-18" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-18').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-18" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-18" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-18" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-18-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-18-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-18-left">Volume:</label>
+                                <input type="range" id="volume-slider-18-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-18-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-18-left" class="mute-checkbox">
+                                <label for="mute-checkbox-18-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-18-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-18-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-18-right">Volume:</label>
+                                <input type="range" id="volume-slider-18-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-18-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-18-right" class="mute-checkbox">
+                                <label for="mute-checkbox-18-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track video-track" data-index="19">
+                <div class="track-info">
+                    <label for="file-input-19">Video Track 4:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-19" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-19').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-19" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-19" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-19" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-19-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-19-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-19-left">Volume:</label>
+                                <input type="range" id="volume-slider-19-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-19-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-19-left" class="mute-checkbox">
+                                <label for="mute-checkbox-19-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-19-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-19-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-19-right">Volume:</label>
+                                <input type="range" id="volume-slider-19-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-19-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-19-right" class="mute-checkbox">
+                                <label for="mute-checkbox-19-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track video-track" data-index="20">
+                <div class="track-info">
+                    <label for="file-input-20">Video Track 5:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-20" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-20').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-20" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-20" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-20" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-20-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-20-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-20-left">Volume:</label>
+                                <input type="range" id="volume-slider-20-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-20-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-20-left" class="mute-checkbox">
+                                <label for="mute-checkbox-20-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-20-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-20-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-20-right">Volume:</label>
+                                <input type="range" id="volume-slider-20-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-20-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-20-right" class="mute-checkbox">
+                                <label for="mute-checkbox-20-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track video-track" data-index="21">
+                <div class="track-info">
+                    <label for="file-input-21">Video Track 6:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-21" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-21').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-21" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-21" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-21" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-21-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-21-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-21-left">Volume:</label>
+                                <input type="range" id="volume-slider-21-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-21-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-21-left" class="mute-checkbox">
+                                <label for="mute-checkbox-21-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-21-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-21-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-21-right">Volume:</label>
+                                <input type="range" id="volume-slider-21-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-21-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-21-right" class="mute-checkbox">
+                                <label for="mute-checkbox-21-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track video-track" data-index="22">
+                <div class="track-info">
+                    <label for="file-input-22">Video Track 7:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-22" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-22').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-22" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-22" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-22" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-22-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-22-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-22-left">Volume:</label>
+                                <input type="range" id="volume-slider-22-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-22-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-22-left" class="mute-checkbox">
+                                <label for="mute-checkbox-22-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-22-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-22-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-22-right">Volume:</label>
+                                <input type="range" id="volume-slider-22-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-22-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-22-right" class="mute-checkbox">
+                                <label for="mute-checkbox-22-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track video-track" data-index="23">
+                <div class="track-info">
+                    <label for="file-input-23">Video Track 8:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-23" class="file-input" accept="video/mp4">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-23').click()">Add Video</button>
+                        <span class="file-name">No file selected</span>
+                        <button id="video-window-btn-23" class="video-window-btn">Open Video</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00 / 00:00</span>
+                </div>
+                                <div class="track-controls">
+                    <div class="video-track-controls">
+                        <div class="video-device-row">
+                            <label for="audio-device-select-23" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-23" class="audio-device-select"></select>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-23-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-23-left" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-23-left">Volume:</label>
+                                <input type="range" id="volume-slider-23-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-23-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-23-left" class="mute-checkbox">
+                                <label for="mute-checkbox-23-left">Mute</label>
+                            </div>
+                        </div>
+                        <div class="video-control-row">
+                            <label for="channel-select-23-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-23-right" class="channel-select"></select>
+                            <div class="volume-control">
+                                <label for="volume-slider-23-right">Volume:</label>
+                                <input type="range" id="volume-slider-23-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-23-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-23-right" class="mute-checkbox">
+                                <label for="mute-checkbox-23-right">Mute</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/ui.js"></script>
+    <script src="js/audio-device.js"></script>
+    <script src="js/video-tab.js"></script>
+    <script src="js/file-handling.js"></script>
+    <script src="js/channel-selection.js"></script>
+    <script src="js/playback.js"></script>
+    <script src="js/volume.js"></script>
+    <script src="js/master-volume.js"></script>
+    <script src="js/artnet-timecode.js"></script>
+    <script src="js/udp-trigger.js"></script>
+    <script src="js/master-timeline.js"></script>
+    <script src="js/ip-config.js"></script>
+    <script src="js/main.js"></script>
+    
+</body>
+</html>

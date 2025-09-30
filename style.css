@@ -1,0 +1,235 @@
+.controls {
+    border: 1px solid silver;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.controls-title {
+    margin-bottom: 0.75rem;
+    font-weight: bold;
+}
+
+.control-group {
+    margin-bottom: 1rem;
+}
+
+.control-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.master-controls {
+    margin-top: 0;
+}
+
+#track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.track {
+    border: 1px solid silver;
+    padding: 1rem;
+}
+
+.artnet-settings {
+    border: 1px solid silver;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.udp-trigger-settings {
+    border: 1px solid silver;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.artnet-title {
+    margin-bottom: 0.75rem;
+    font-weight: bold;
+}
+
+.udp-trigger-title {
+    margin-bottom: 0.75rem;
+    font-weight: bold;
+}
+
+/* IP field styling */
+#artnet-ip, #udp-trigger-ip {
+    display: none;
+    margin-left: 10px;
+    width: 150px;
+}
+
+#artnet-ip-preset, #udp-trigger-ip-preset {
+    min-width: 200px;
+}
+
+.setting-group {
+    margin-bottom: 0.5rem;
+}
+
+.setting-group:last-child {
+    margin-bottom: 0;
+}
+
+.track-info {
+    margin-bottom: 0.5rem;
+}
+
+.track-info label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.track-file-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.file-input {
+    display: none;
+}
+
+#artnet-ip {
+    margin-top: 5px;
+    display: none;
+}
+
+.video-window-btn {
+    display: none;
+}
+
+.video-track-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.video-device-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    margin-bottom: 0.5rem;
+}
+
+.video-control-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.device-label {
+    min-width: 85px;
+    white-space: nowrap;
+}
+
+.channel-label {
+    min-width: 70px;
+    white-space: nowrap;
+}
+
+.timeline-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.timeline-progress {
+    flex-grow: 1;
+}
+
+.track-controls {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Audio track controls - vertical layout */
+.track:not(.video-track) .track-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.audio-device-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.audio-control-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Video Window Styles */
+.video-window-body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.video-window-video {
+    max-width: 100vw;
+    max-height: 100vh;
+    width: auto;
+    height: auto;
+}
+
+/* Art-Net Status Display */
+.artnet-status {
+    color: black;
+    font-weight: normal;
+    margin-left: 0.5rem;
+}
+
+.ip-info {
+    margin-left: 0.5rem;
+}
+
+.udp-trigger-status {
+    color: #000;  /* Standard: schwarz */
+    font-weight: normal;
+    margin-left: 0.5rem;
+}
+
+.udp-trigger-status.enabled {
+    color: #00ff00;  /* Aktiviert: grün */
+    font-weight: 500;
+}
+
+.udp-trigger-status.disabled {
+    color: #000;  /* Deaktiviert: schwarz */
+}
+
+.udp-trigger-status.error {
+    color: #ff0000;
+}
+
+.artnet-status.connected {
+    color: #00ff00;
+}
+
+.artnet-status.error {
+    color: #ff0000;
+}
+
