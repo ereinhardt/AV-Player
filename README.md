@@ -9,7 +9,7 @@ by Erik Anton Reinhardt.<br>
 node server.js
 ```
 
-**Note**: 
+**Note**: <br> 
 Set port (to open the Browser-UI) in `server.js`
 
 ```bash
