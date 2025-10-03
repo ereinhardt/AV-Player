@@ -19,6 +19,10 @@
             object-fit: contain;
             background: black;
             display: block;
+            /* Windows-specific fixes */
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            transform: translateZ(0);
         }
         
         /* Hide any default browser video controls completely */
@@ -76,27 +80,35 @@
 </head>
 <body class="video-window-body">
     <video id="video-player" class="video-window-video" muted style="width: 100%; height: 100%; object-fit: contain; background: black;"></video>
-    <div id="black-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10;"></div>
+    <div id="black-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10; opacity: 1; visibility: visible; pointer-events: none;"></div>
 
     <script>
         let isReceivingSeek = false;
         let lastManualSeekTime = 0;
         let overlayTimeout = null;
         
-        // Function to safely hide overlay
+        // Function to safely hide overlay with Windows compatibility
         function hideOverlay() {
             const blackOverlay = document.getElementById('black-overlay');
             if (blackOverlay) {
                 blackOverlay.style.display = 'none';
+                // Force repaint on Windows browsers
+                blackOverlay.style.visibility = 'hidden';
+                blackOverlay.offsetHeight; // Trigger reflow
+                blackOverlay.style.visibility = 'visible';
             }
         }
         
-        // Function to safely show overlay
+        // Function to safely show overlay with Windows compatibility
         function showOverlay() {
             const blackOverlay = document.getElementById('black-overlay');
             if (blackOverlay) {
                 blackOverlay.style.display = 'block';
                 blackOverlay.style.zIndex = '1000';
+                blackOverlay.style.visibility = 'visible';
+                blackOverlay.style.opacity = '1';
+                // Force repaint on Windows browsers
+                blackOverlay.offsetHeight; // Trigger reflow
             }
         }
         
@@ -214,19 +226,35 @@
                             overlayTimeout = null;
                         }
                         
+                        // Windows-specific: Force overlay hide before restart
                         hideOverlay();
+                        
+                        // Force video to black frame before restart
+                        video.style.visibility = 'hidden';
                         video.currentTime = 0;
                         
-                        // Force play and ensure overlay stays hidden
-                        video.play().then(() => {
-                            // Double-check overlay is hidden after successful play start
-                            overlayTimeout = setTimeout(() => {
-                                if (!video.paused && !video.ended && video.currentTime >= 0) {
-                                    hideOverlay();
-                                }
-                                overlayTimeout = null;
-                            }, 200);
-                        }).catch(e => {});
+                        // Windows-specific: Multiple timeout strategy
+                        setTimeout(() => {
+                            video.style.visibility = 'visible';
+                            hideOverlay();
+                            
+                            video.play().then(() => {
+                                // Multiple checks for Windows compatibility
+                                overlayTimeout = setTimeout(() => {
+                                    if (!video.paused && !video.ended) {
+                                        hideOverlay();
+                                    }
+                                    overlayTimeout = null;
+                                }, 100);
+                                
+                                // Additional check after 300ms
+                                setTimeout(() => {
+                                    if (!video.paused && !video.ended && video.currentTime > 0) {
+                                        hideOverlay();
+                                    }
+                                }, 300);
+                            }).catch(e => {});
+                        }, 50);
                         break;
                 }
             } catch (error) {}
@@ -309,6 +337,32 @@
                 }
             });
             
+            // Windows-specific: Handle video state changes
+            video.addEventListener('loadstart', () => {
+                // Video started loading - prepare for playback
+            });
+            
+            video.addEventListener('progress', () => {
+                // Video is downloading - ensure overlay is ready
+                if (!video.paused && !video.ended && video.currentTime > 0) {
+                    hideOverlay();
+                }
+            });
+            
+            // Windows-specific: Handle video ready states
+            video.addEventListener('canplay', () => {
+                if (!video.paused && !video.ended) {
+                    hideOverlay();
+                }
+            });
+            
+            // Windows-specific: Force overlay management on video source changes
+            video.addEventListener('durationchange', () => {
+                if (!video.paused && !video.ended && video.currentTime > 0) {
+                    hideOverlay();
+                }
+            });
+            
             // Prevent right-click context menu on video
             video.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
@@ -334,7 +388,13 @@
             
             // Show black overlay when video ends instead of showing any frame
             video.addEventListener('ended', () => {
+                // Windows-specific: Immediate overlay show
                 showOverlay();
+                
+                // Windows-specific: Additional safety check
+                setTimeout(() => {
+                    showOverlay();
+                }, 50);
                 
                 // Also post message to parent about video ending
                 if (window.opener && !isReceivingSeek) {
