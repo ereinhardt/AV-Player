@@ -87,6 +87,7 @@
         let lastManualSeekTime = 0;
         let overlayTimeout = null;
         let isLoopRestarting = false;
+        let videoHasEnded = false;
         
         // Function to preemptively show overlay (Windows first-frame prevention)
         function preemptiveShowOverlay() {
@@ -102,8 +103,8 @@
         
         // Function to safely hide overlay with Windows compatibility
         function hideOverlay() {
-            // Don't hide overlay if we're in the middle of a loop restart
-            if (isLoopRestarting) {
+            // Don't hide overlay if we're in the middle of a loop restart or video has ended
+            if (isLoopRestarting || videoHasEnded) {
                 return;
             }
             
@@ -154,6 +155,10 @@
                 switch (type) {
                     case 'LOAD_VIDEO':
                         try {
+                            // Reset flags when loading new video
+                            videoHasEnded = false;
+                            isLoopRestarting = false;
+                            
                             video.src = data.url;
                             video.muted = true;
                             video.controls = false; // Ensure no controls
@@ -203,6 +208,7 @@
                         break;
                         
                     case 'PLAY':
+                        videoHasEnded = false; // Reset ended flag when playing
                         hideOverlay();
                         video.play().catch(e => {});
                         break;
@@ -240,6 +246,7 @@
                     case 'RESTART_VIDEO':
                         // Set flag to prevent premature overlay hiding
                         isLoopRestarting = true;
+                        videoHasEnded = false; // Reset the ended flag
                         
                         // Clear any pending overlay operations
                         if (overlayTimeout) {
@@ -303,6 +310,9 @@
             }
             
             video.addEventListener('play', () => {
+                // Reset ended flag when video starts playing
+                videoHasEnded = false;
+                
                 // Hide black overlay when video starts playing
                 hideOverlay();
                 
@@ -343,30 +353,38 @@
             
             // Additional safety: hide overlay when video is actually playing
             video.addEventListener('playing', () => {
-                // Only hide if video has actually progressed
-                if (video.currentTime > 0.1 && !isLoopRestarting) {
+                // Only hide if video has actually progressed and hasn't ended
+                if (video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
                     hideOverlay();
                 }
             });
             
             // Hide overlay when video time updates (playing actively)
             video.addEventListener('timeupdate', () => {
-                // Only hide overlay if video has progressed beyond first frames
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting) {
+                // Check if video has reached the end (within 0.1 seconds of duration)
+                if (video.duration && video.currentTime >= video.duration - 0.1) {
+                    if (!videoHasEnded) {
+                        videoHasEnded = true;
+                        showOverlay();
+                    }
+                }
+                
+                // Only hide overlay if video has progressed beyond first frames and hasn't ended
+                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
                     hideOverlay();
                 }
             });
             
             // Additional safety: hide overlay when video metadata is loaded and ready
             video.addEventListener('loadedmetadata', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting) {
+                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
                     hideOverlay();
                 }
             });
             
             // Video can play through without stopping - hide overlay if playing
             video.addEventListener('canplaythrough', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting) {
+                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
                     hideOverlay();
                 }
             });
@@ -378,21 +396,21 @@
             
             video.addEventListener('progress', () => {
                 // Video is downloading - ensure overlay is ready
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting) {
+                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
                     hideOverlay();
                 }
             });
             
             // Windows-specific: Handle video ready states
             video.addEventListener('canplay', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting) {
+                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
                     hideOverlay();
                 }
             });
             
             // Windows-specific: Force overlay management on video source changes
             video.addEventListener('durationchange', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting) {
+                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
                     hideOverlay();
                 }
             });
@@ -422,13 +440,20 @@
             
             // Show black overlay when video ends instead of showing any frame
             video.addEventListener('ended', () => {
+                // Set flag to indicate video has ended
+                videoHasEnded = true;
+                
                 // Windows-specific: Immediate overlay show
                 showOverlay();
                 
-                // Windows-specific: Additional safety check
+                // Windows-specific: Additional safety checks
                 setTimeout(() => {
                     showOverlay();
                 }, 50);
+                
+                setTimeout(() => {
+                    showOverlay();
+                }, 150);
                 
                 // Also post message to parent about video ending
                 if (window.opener && !isReceivingSeek) {
