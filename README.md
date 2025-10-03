@@ -22,4 +22,4 @@ The web interface opens by default at `localhost:3001`. Change the port in `serv
 
 ## Known Bugs (TODO):
 
-- When adding a longer audio or video file to an existing loop, the loop time does not adapt to the new longest file.
+–No Bugs know–
