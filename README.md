@@ -1,4 +1,4 @@
-# A/V-Player (v.1.0-10-2025)
+# A/V-Player (v.1.1-10-2025)
 
 "A/V-Player" with 16-channel audio and 8-channel video (each video track includes 2-channel audio), individual audio device/channel/volume mapping, a master timeline with loop function, Timecode via Art-Net, and UDP-Trigger-Sender (e.g., for additional BrightSign Mediaplayer in the same network – an `autorun.brs` (inside the `Brightsign-UDP` folder) for receiving UDP triggers is included).
 
@@ -17,6 +17,8 @@ The web interface opens by default at `localhost:3001`. Change the port in `serv
 ```js
 (line 20) this.webPort = 3001; // Web-Server Port
 ```
+- Supported file formats: `MP4`, `MP3`, `WAV`.
+- Tested primarily with Google Chrome.
 
 ## Known Bugs (TODO):
 
