@@ -23,7 +23,11 @@ function setupMasterTimeline(audioElements) {
             
             // Send Art-Net timecode if available
             if (window.artNetTimecode && typeof window.artNetTimecode.sendTimecode === 'function') {
-                window.artNetTimecode.sendTimecode(longestAudio.currentTime, longestDuration);
+                const timecode = window.artNetTimecode.sendTimecode(longestAudio.currentTime, longestDuration);
+                // Debug output (will be visible in browser console)
+                if (timecode && longestAudio.currentTime > 0) {
+                    console.debug(`Art-Net Timecode sent: ${timecode.formatted} to ${window.artNetTimecode.ip}:${window.artNetTimecode.port}`);
+                }
             }
         } else {
             masterTimeDisplay.textContent = '00:00 / 00:00';

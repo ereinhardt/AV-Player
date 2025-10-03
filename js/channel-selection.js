@@ -40,9 +40,16 @@ function setupChannelSelection(tracks, audioSources, audioContextContainer) {
                         // Completely disconnect and reconnect to ensure clean routing
                         gainNode.disconnect();
                         
+                        // Debug: Log merger and destination info
                         const context = audioContextContainer.contexts[index];
+                        console.log(`Channel routing for track ${index}:`);
+                        console.log(`Target channel: ${newChannel + 1} (0-indexed: ${newChannel})`);
+                        console.log(`Merger channels: ${merger.numberOfInputs}`);
+                        console.log(`Destination max: ${context.destination.maxChannelCount}`);
+                        console.log(`Destination active: ${context.destination.channelCount}`);
                         
                         gainNode.connect(merger, 0, newChannel);
+                        console.log(`Audio track ${index} routed to channel ${newChannel + 1}`);
                     }
                 });
             }
@@ -68,9 +75,11 @@ function handleVideoChannelChange(trackIndex, side, channelValue, audioSources) 
         // Disconnect and reconnect left channel
         leftGainNode.disconnect();
         leftGainNode.connect(merger, 0, newChannel);
+        console.log(`Video track ${trackIndex} left channel routed to channel ${newChannel + 1}`);
     } else if (side === 'right') {
         // Disconnect and reconnect right channel
         rightGainNode.disconnect();
         rightGainNode.connect(merger, 0, newChannel);
+        console.log(`Video track ${trackIndex} right channel routed to channel ${newChannel + 1}`);
     }
 }

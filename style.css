@@ -59,7 +59,6 @@
 #artnet-ip, #udp-trigger-ip {
     display: none;
     margin-left: 10px;
-    margin-top: 5px;
     width: 150px;
 }
 
@@ -92,6 +91,11 @@
 }
 
 .file-input {
+    display: none;
+}
+
+#artnet-ip {
+    margin-top: 5px;
     display: none;
 }
 
