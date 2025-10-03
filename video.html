@@ -192,9 +192,8 @@
                             blackOverlayRestart.style.display = 'none';
                         }
                         video.currentTime = 0;
-                        if (!video.paused) {
-                            video.play().catch(e => {});
-                        }
+                        // Always try to play when restarting, regardless of current state
+                        video.play().catch(e => {});
                         break;
                 }
             } catch (error) {}
@@ -213,6 +212,12 @@
             }
             
             video.addEventListener('play', () => {
+                // Hide black overlay when video starts playing
+                const blackOverlay = document.getElementById('black-overlay');
+                if (blackOverlay) {
+                    blackOverlay.style.display = 'none';
+                }
+                
                 if (window.opener && !isReceivingSeek) {
                     try {
                         window.opener.postMessage({ type: 'VIDEO_PLAY' }, window.location.origin);
@@ -244,6 +249,24 @@
                                 data: { time: video.currentTime } 
                             }, window.location.origin);
                         } catch (e) {}
+                    }
+                }
+            });
+            
+            // Additional safety: hide overlay when video is actually playing
+            video.addEventListener('playing', () => {
+                const blackOverlay = document.getElementById('black-overlay');
+                if (blackOverlay) {
+                    blackOverlay.style.display = 'none';
+                }
+            });
+            
+            // Hide overlay when video time updates (playing actively)
+            video.addEventListener('timeupdate', () => {
+                if (!video.paused && !video.ended) {
+                    const blackOverlay = document.getElementById('black-overlay');
+                    if (blackOverlay && blackOverlay.style.display !== 'none') {
+                        blackOverlay.style.display = 'none';
                     }
                 }
             });
