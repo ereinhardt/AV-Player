@@ -81,6 +81,24 @@
     <script>
         let isReceivingSeek = false;
         let lastManualSeekTime = 0;
+        let overlayTimeout = null;
+        
+        // Function to safely hide overlay
+        function hideOverlay() {
+            const blackOverlay = document.getElementById('black-overlay');
+            if (blackOverlay) {
+                blackOverlay.style.display = 'none';
+            }
+        }
+        
+        // Function to safely show overlay
+        function showOverlay() {
+            const blackOverlay = document.getElementById('black-overlay');
+            if (blackOverlay) {
+                blackOverlay.style.display = 'block';
+                blackOverlay.style.zIndex = '1000';
+            }
+        }
         
         window.addEventListener('load', () => {
             if (window.opener) {
@@ -106,7 +124,6 @@
                 switch (type) {
                     case 'LOAD_VIDEO':
                         try {
-                            console.log('Loading video:', data.filename, 'URL:', data.url);
                             video.src = data.url;
                             video.muted = true;
                             video.controls = false; // Ensure no controls
@@ -116,6 +133,9 @@
                             video.style.objectFit = 'contain';
                             video.style.background = 'black';
                             
+                            // Hide overlay when loading new video
+                            hideOverlay();
+                            
                             // Remove old event listeners to avoid duplicates
                             video.removeEventListener('loadstart', video._loadStartHandler);
                             video.removeEventListener('canplay', video._canPlayHandler);
@@ -124,16 +144,20 @@
                             
                             // Create new handlers
                             video._loadStartHandler = () => {
-                                console.log('Video load started');
+                                // Video load started
                             };
                             video._canPlayHandler = () => {
-                                console.log('Video can play');
+                                // Video can play - ensure overlay is hidden
+                                const overlay = document.getElementById('black-overlay');
+                                if (overlay && !video.paused && !video.ended) {
+                                    overlay.style.display = 'none';
+                                }
                             };
                             video._errorHandler = (e) => {
                                 console.error('Video error:', e);
                             };
                             video._loadedDataHandler = () => {
-                                console.log('Video data loaded');
+                                // Video data loaded
                             };
                             
                             // Add event listeners
@@ -149,10 +173,7 @@
                         break;
                         
                     case 'PLAY':
-                        let blackOverlayPlay = document.getElementById('black-overlay');
-                        if (blackOverlayPlay) {
-                            blackOverlayPlay.style.display = 'none';
-                        }
+                        hideOverlay();
                         video.play().catch(e => {});
                         break;
                         
@@ -187,13 +208,25 @@
                         break;
                         
                     case 'RESTART_VIDEO':
-                        let blackOverlayRestart = document.getElementById('black-overlay');
-                        if (blackOverlayRestart) {
-                            blackOverlayRestart.style.display = 'none';
+                        // Clear any pending overlay operations
+                        if (overlayTimeout) {
+                            clearTimeout(overlayTimeout);
+                            overlayTimeout = null;
                         }
+                        
+                        hideOverlay();
                         video.currentTime = 0;
-                        // Always try to play when restarting, regardless of current state
-                        video.play().catch(e => {});
+                        
+                        // Force play and ensure overlay stays hidden
+                        video.play().then(() => {
+                            // Double-check overlay is hidden after successful play start
+                            overlayTimeout = setTimeout(() => {
+                                if (!video.paused && !video.ended && video.currentTime >= 0) {
+                                    hideOverlay();
+                                }
+                                overlayTimeout = null;
+                            }, 200);
+                        }).catch(e => {});
                         break;
                 }
             } catch (error) {}
@@ -213,10 +246,7 @@
             
             video.addEventListener('play', () => {
                 // Hide black overlay when video starts playing
-                const blackOverlay = document.getElementById('black-overlay');
-                if (blackOverlay) {
-                    blackOverlay.style.display = 'none';
-                }
+                hideOverlay();
                 
                 if (window.opener && !isReceivingSeek) {
                     try {
@@ -255,19 +285,27 @@
             
             // Additional safety: hide overlay when video is actually playing
             video.addEventListener('playing', () => {
-                const blackOverlay = document.getElementById('black-overlay');
-                if (blackOverlay) {
-                    blackOverlay.style.display = 'none';
-                }
+                hideOverlay();
             });
             
             // Hide overlay when video time updates (playing actively)
             video.addEventListener('timeupdate', () => {
+                if (!video.paused && !video.ended && video.currentTime > 0) {
+                    hideOverlay();
+                }
+            });
+            
+            // Additional safety: hide overlay when video metadata is loaded and ready
+            video.addEventListener('loadedmetadata', () => {
                 if (!video.paused && !video.ended) {
-                    const blackOverlay = document.getElementById('black-overlay');
-                    if (blackOverlay && blackOverlay.style.display !== 'none') {
-                        blackOverlay.style.display = 'none';
-                    }
+                    hideOverlay();
+                }
+            });
+            
+            // Video can play through without stopping - hide overlay if playing
+            video.addEventListener('canplaythrough', () => {
+                if (!video.paused && !video.ended) {
+                    hideOverlay();
                 }
             });
             
@@ -296,10 +334,8 @@
             
             // Show black overlay when video ends instead of showing any frame
             video.addEventListener('ended', () => {
-                const blackOverlay = document.getElementById('black-overlay');
-                if (blackOverlay) {
-                    blackOverlay.style.display = 'block';
-                }
+                showOverlay();
+                
                 // Also post message to parent about video ending
                 if (window.opener && !isReceivingSeek) {
                     try {

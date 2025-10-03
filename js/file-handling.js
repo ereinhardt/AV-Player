@@ -33,14 +33,12 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
                 
                 // Based on the Chrome Web Audio API analysis:
                 // For >8 channels, Chrome uses CHANNEL_LAYOUT_DISCRETE
-                console.log(`Audio hardware supports ${maxChannels} channels`);
                 
                 try {
                     // Set destination to use all available channels with discrete layout
                     destination.channelCount = maxChannels;
                     destination.channelCountMode = 'explicit';
                     destination.channelInterpretation = 'discrete';
-                    console.log(`Destination configured for ${maxChannels} discrete channels`);
                 } catch (error) {
                     console.warn('Could not configure destination:', error);
                     // Fallback to stereo
@@ -114,6 +112,9 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
                     video.addEventListener('loadedmetadata', () => {
                         if (typeof loadVideoIntoWindow === 'function') {
                             loadVideoIntoWindow(file, audio, index);
+                            // Clean up temporary variables after loading
+                            delete window[`_pendingVideoFile_${index}`];
+                            delete window[`_pendingVideoAudio_${index}`];
                         }
                     });
                     
@@ -121,6 +122,9 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
                     if (typeof loadVideoIntoWindow === 'function') {
                         setTimeout(() => {
                             loadVideoIntoWindow(file, audio, index);
+                            // Clean up temporary variables after loading
+                            delete window[`_pendingVideoFile_${index}`];
+                            delete window[`_pendingVideoAudio_${index}`];
                         }, 100);
                     }
                 }

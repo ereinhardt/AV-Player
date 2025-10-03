@@ -1,8 +1,6 @@
 // Device Manager - Helper functions for audio device management
 
 function recreateAudioConnection(trackIndex, audioElements, audioSources, audioContextContainer) {
-    console.log(`Recreating audio connection for track ${trackIndex}`);
-    
     const audio = audioElements[trackIndex];
     if (!audio || !audioContextContainer.contexts[trackIndex]) {
         console.error(`Cannot recreate connection: missing audio or context for track ${trackIndex}`);
@@ -46,7 +44,6 @@ function recreateAudioConnection(trackIndex, audioElements, audioSources, audioC
         // Update audioSources array
         audioSources[trackIndex] = { audio, source, merger, gainNode };
         
-        console.log(`Successfully recreated audio connection for track ${trackIndex}`);
         return true;
         
     } catch (error) {

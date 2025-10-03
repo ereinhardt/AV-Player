@@ -103,15 +103,9 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     document.addEventListener('fileLoaded', findLongestAudioAndSetupLoop);
 
     playPauseButton.addEventListener('click', () => {
-        console.log('Play button clicked');
-        
         // Check if any AudioContext exists
         const hasAnyContext = audioContextContainer.contexts && 
                              audioContextContainer.contexts.some(context => context !== null);
-        
-        console.log('Has any context:', hasAnyContext);
-        console.log('AudioContexts:', audioContextContainer.contexts);
-        console.log('Audio elements:', audioElements);
         
         if (!hasAnyContext) {
             alert("Please add at least one audio file.");
@@ -122,11 +116,9 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
         if (audioContextContainer.contexts) {
             audioContextContainer.contexts.forEach((context, index) => {
                 if (context) {
-                    console.log(`Context ${index} state:`, context.state);
                     if (context.state === 'suspended') {
-                        console.log(`Resuming context ${index}`);
                         context.resume().then(() => {
-                            console.log(`Context ${index} resumed successfully`);
+                            // Context resumed successfully
                         }).catch(error => {
                             console.error(`Failed to resume context ${index}:`, error);
                         });
@@ -137,7 +129,6 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
 
         isPlaying = !isPlaying;
         if (isPlaying) {
-            console.log('Starting playback');
             playPauseButton.textContent = 'Pause';
             playPauseButton.classList.add('playing');
             
@@ -148,14 +139,12 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
             
             audioElements.forEach((audio, index) => {
                 if (audio) {
-                    console.log(`Playing audio ${index}, src:`, audio.src);
                     audio.play().catch(error => {
                         console.error(`Failed to play audio ${index}:`, error);
                     });
                 }
             });
         } else {
-            console.log('Pausing playback');
             playPauseButton.textContent = 'Play';
             playPauseButton.classList.remove('playing');
             
@@ -166,7 +155,6 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
             
             audioElements.forEach((audio, index) => {
                 if (audio) {
-                    console.log(`Pausing audio ${index}`);
                     audio.pause();
                 }
             });
