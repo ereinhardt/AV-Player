@@ -15,7 +15,7 @@ node server.js
 **Note**: <br> 
 The web interface opens by default at `localhost:3001`. Change the port in `server.js` if necessary:
 ```js
-(line 20) this.webPort = 3001; // Web-Server Port
+(line 15) this.webPort = 3001;
 ```
 - Supported file formats: `MP4`, `MP3`, `WAV`.
 - Tested primarily with Google Chrome.
