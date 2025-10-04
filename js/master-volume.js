@@ -3,45 +3,40 @@ function setupMasterVolumeControl(audioContextContainer) {
     const masterVolumeDbDisplay = document.getElementById('master-volume-db');
     const masterMuteCheckbox = document.getElementById('master-mute-checkbox');
 
+    // Early return if required elements are missing
+    if (!masterVolumeSlider || !masterVolumeDbDisplay || !masterMuteCheckbox) {
+        console.warn('Master volume controls not found');
+        return;
+    }
+
+    // Helper function to convert dB to linear volume
+    const dbToVolume = (db) => Math.pow(10, db / 20);
+
     const updateMasterVolume = () => {
         const db = parseFloat(masterVolumeSlider.value);
-        const volume = masterMuteCheckbox.checked ? 0 : Math.pow(10, db / 20);
+        const volume = masterMuteCheckbox.checked ? 0 : dbToVolume(db);
         
         // Store the master volume value
         audioContextContainer.masterVolume = volume;
         
         // Update all existing master gain nodes
-        if (audioContextContainer.masterGains) {
-            audioContextContainer.masterGains.forEach((masterGain, index) => {
-                if (masterGain) {
-                    masterGain.gain.value = volume;
-                }
-            });
-        }
+        audioContextContainer.masterGains?.forEach((masterGain) => {
+            if (masterGain) {
+                masterGain.gain.value = volume;
+            }
+        });
 
         // Update UI
-        if (masterMuteCheckbox.checked) {
-            masterVolumeDbDisplay.textContent = `-∞ dB`;
-            masterVolumeSlider.disabled = true;
-        } else {
-            masterVolumeDbDisplay.textContent = `${db.toFixed(1)} dB`;
-            masterVolumeSlider.disabled = false;
-        }
+        masterVolumeDbDisplay.textContent = masterMuteCheckbox.checked ? `-∞ dB` : `${db.toFixed(1)} dB`;
+        masterVolumeSlider.disabled = masterMuteCheckbox.checked;
     };
 
-    masterVolumeSlider.addEventListener('input', (event) => {
-        updateMasterVolume();
-    });
+    // Add event listeners
+    masterVolumeSlider.addEventListener('input', updateMasterVolume);
+    masterMuteCheckbox.addEventListener('change', updateMasterVolume);
 
-    masterMuteCheckbox.addEventListener('change', () => {
-        updateMasterVolume();
-    });
-
-    // Set initial volume display and master volume value
+    // Initial setup
     const initialDb = parseFloat(masterVolumeSlider.value);
-    masterVolumeDbDisplay.textContent = `${initialDb.toFixed(1)} dB`;
-    audioContextContainer.masterVolume = Math.pow(10, initialDb / 20);
-    
-    // Initial update to set everything correctly
-    updateMasterVolume();
+    audioContextContainer.masterVolume = dbToVolume(initialDb);
+    updateMasterVolume(); // This will set the initial display correctly
 }

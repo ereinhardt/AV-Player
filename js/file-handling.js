@@ -31,20 +31,20 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
                 const destination = audioContextContainer.contexts[index].destination;
                 const maxChannels = destination.maxChannelCount;
                 
-                // Based on the Chrome Web Audio API analysis:
-                // For >8 channels, Chrome uses CHANNEL_LAYOUT_DISCRETE
                 console.log(`Audio hardware supports ${maxChannels} channels`);
                 
                 try {
-                    // Set destination to use all available channels with discrete layout
+                    // Use maximum available channels for multi-channel devices
                     destination.channelCount = maxChannels;
                     destination.channelCountMode = 'explicit';
                     destination.channelInterpretation = 'discrete';
                     console.log(`Destination configured for ${maxChannels} discrete channels`);
                 } catch (error) {
-                    console.warn('Could not configure destination:', error);
+                    console.warn('Could not configure multi-channel destination:', error);
                     // Fallback to stereo
                     destination.channelCount = 2;
+                    destination.channelCountMode = 'explicit';
+                    destination.channelInterpretation = 'speakers';
                 }
                 
                 // Create master gain with matching channel configuration
@@ -160,7 +160,10 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
 
             const source = audioContextContainer.contexts[index].createMediaElementSource(audio);
             const destination = audioContextContainer.contexts[index].destination;
-            const merger = audioContextContainer.contexts[index].createChannelMerger(destination.channelCount);
+            
+            // Create merger with enough channels for multi-channel interfaces
+            const mergerChannels = Math.max(destination.maxChannelCount, 18);
+            const merger = audioContextContainer.contexts[index].createChannelMerger(mergerChannels);
             
             // Configure merger for discrete channel interpretation
             merger.channelCountMode = 'explicit';

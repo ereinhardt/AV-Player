@@ -1,8 +1,6 @@
 function setupChannelSelection(tracks, audioSources, audioContextContainer) {
     tracks.forEach((track, arrayIndex) => {
-        // Use the data-index attribute instead of array index
         const index = parseInt(track.getAttribute('data-index'));
-        
         const isVideoTrack = track.classList.contains('video-track');
         
         if (isVideoTrack) {
@@ -29,27 +27,30 @@ function setupChannelSelection(tracks, audioSources, audioContextContainer) {
                     const audioSource = audioSources[index];
                     if (!audioSource) {
                         alert("Please add an audio file to this track first.");
-                        event.target.value = 1; // Reset selection
+                        event.target.value = 1;
                         return;
                     }
 
-                    const newChannel = parseInt(event.target.value, 10) - 1; // 0-indexed
+                    const newChannel = parseInt(event.target.value, 10) - 1;
                     const { gainNode, merger } = audioSource;
                     
                     if (gainNode && merger) {
-                        // Completely disconnect and reconnect to ensure clean routing
                         gainNode.disconnect();
                         
-                        // Debug: Log merger and destination info
-                        const context = audioContextContainer.contexts[index];
-                        console.log(`Channel routing for track ${index}:`);
-                        console.log(`Target channel: ${newChannel + 1} (0-indexed: ${newChannel})`);
-                        console.log(`Merger channels: ${merger.numberOfInputs}`);
-                        console.log(`Destination max: ${context.destination.maxChannelCount}`);
-                        console.log(`Destination active: ${context.destination.channelCount}`);
-                        
-                        gainNode.connect(merger, 0, newChannel);
-                        console.log(`Audio track ${index} routed to channel ${newChannel + 1}`);
+                        // Validate channel and connect
+                        if (newChannel >= 0 && newChannel < merger.numberOfInputs) {
+                            try {
+                                gainNode.connect(merger, 0, newChannel);
+                            } catch (error) {
+                                // Fallback to channel 1
+                                gainNode.connect(merger, 0, 0);
+                                event.target.value = 1;
+                            }
+                        } else {
+                            // Fallback to channel 1
+                            gainNode.connect(merger, 0, 0);
+                            event.target.value = 1;
+                        }
                     }
                 });
             }
@@ -64,22 +65,25 @@ function handleVideoChannelChange(trackIndex, side, channelValue, audioSources) 
         return;
     }
 
-    const newChannel = parseInt(channelValue, 10) - 1; // 0-indexed
+    const newChannel = parseInt(channelValue, 10) - 1;
     const { splitter, leftGainNode, rightGainNode, merger } = audioSource;
     
     if (!splitter || !leftGainNode || !rightGainNode || !merger) {
         return;
     }
 
-    if (side === 'left') {
-        // Disconnect and reconnect left channel
-        leftGainNode.disconnect();
-        leftGainNode.connect(merger, 0, newChannel);
-        console.log(`Video track ${trackIndex} left channel routed to channel ${newChannel + 1}`);
-    } else if (side === 'right') {
-        // Disconnect and reconnect right channel
-        rightGainNode.disconnect();
-        rightGainNode.connect(merger, 0, newChannel);
-        console.log(`Video track ${trackIndex} right channel routed to channel ${newChannel + 1}`);
+    if (newChannel >= 0 && newChannel < merger.numberOfInputs) {
+        try {
+            if (side === 'left') {
+                leftGainNode.disconnect();
+                leftGainNode.connect(merger, 0, newChannel);
+            } else if (side === 'right') {
+                rightGainNode.disconnect();
+                rightGainNode.connect(merger, 0, newChannel);
+            }
+        } catch (error) {
+            console.error(`Failed to route video track ${trackIndex} ${side} channel:`, error);
+        }
     }
 }
+

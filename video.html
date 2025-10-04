@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Player</title>
-    <link rel="stylesheet" href="style.css">
     <style>
         body {
             margin: 0;
@@ -19,456 +18,388 @@
             object-fit: contain;
             background: black;
             display: block;
-            /* Windows-specific fixes */
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            transform: translateZ(0);
         }
         
-        /* Hide any default browser video controls completely */
-        #video-player::-webkit-media-controls {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-panel {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-play-button {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-volume-slider {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-timeline {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-current-time-display {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-time-remaining-display {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-fullscreen-button {
-            display: none !important;
-        }
-        
-        #video-player::-webkit-media-controls-volume-control-container {
-            display: none !important;
-        }
-        
-        /* Firefox */
-        #video-player::-moz-media-controls {
-            display: none !important;
-        }
-        
-        /* Edge/IE */
+        /* Hide all video controls */
+        #video-player::-webkit-media-controls,
+        #video-player::-moz-media-controls,
         #video-player::-ms-media-controls {
             display: none !important;
         }
         
-        /* Make sure no poster frame is shown */
-        #video-player[poster] {
+        #black-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background: black;
+            z-index: 9999;
+            pointer-events: none;
+            display: none;
         }
     </style>
 </head>
-<body class="video-window-body">
-    <video id="video-player" class="video-window-video" muted style="width: 100%; height: 100%; object-fit: contain; background: black;"></video>
-    <div id="black-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10; opacity: 1; visibility: visible; pointer-events: none;"></div>
+<body>
+    <video id="video-player" muted></video>
+    <div id="black-overlay"></div>
 
     <script>
         let isReceivingSeek = false;
-        let lastManualSeekTime = 0;
-        let overlayTimeout = null;
-        let isLoopRestarting = false;
         let videoHasEnded = false;
+        let isLoopRestarting = false;
         
-        // Function to preemptively show overlay (Windows first-frame prevention)
-        function preemptiveShowOverlay() {
-            const blackOverlay = document.getElementById('black-overlay');
-            if (blackOverlay) {
-                blackOverlay.style.display = 'block';
-                blackOverlay.style.zIndex = '2000'; // Higher than video
-                blackOverlay.style.visibility = 'visible';
-                blackOverlay.style.opacity = '1';
-                blackOverlay.offsetHeight; // Force immediate repaint
-            }
-        }
+        const video = document.getElementById('video-player');
+        const overlay = document.getElementById('black-overlay');
         
-        // Function to safely hide overlay with Windows compatibility
-        function hideOverlay() {
-            // Don't hide overlay if we're in the middle of a loop restart or video has ended
-            if (isLoopRestarting || videoHasEnded) {
-                return;
-            }
-            
-            const blackOverlay = document.getElementById('black-overlay');
-            if (blackOverlay) {
-                blackOverlay.style.display = 'none';
-                // Force repaint on Windows browsers
-                blackOverlay.style.visibility = 'hidden';
-                blackOverlay.offsetHeight; // Trigger reflow
-                blackOverlay.style.visibility = 'visible';
-            }
-        }
-        
-        // Function to safely show overlay with Windows compatibility
+        // Simplified overlay management with aggressive debugging
         function showOverlay() {
-            const blackOverlay = document.getElementById('black-overlay');
-            if (blackOverlay) {
-                blackOverlay.style.display = 'block';
-                blackOverlay.style.zIndex = '1000';
-                blackOverlay.style.visibility = 'visible';
-                blackOverlay.style.opacity = '1';
-                // Force repaint on Windows browsers
-                blackOverlay.offsetHeight; // Trigger reflow
+            console.log('SHOWING OVERLAY - forcing all properties');
+            overlay.style.display = 'block';
+            overlay.style.visibility = 'visible';
+            overlay.style.opacity = '1';
+            overlay.style.zIndex = '9999';
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.backgroundColor = 'black';
+            
+            // Force a reflow to ensure changes take effect
+            overlay.offsetHeight;
+            
+            console.log('Overlay styles after showing:', {
+                display: overlay.style.display,
+                visibility: overlay.style.visibility,
+                opacity: overlay.style.opacity,
+                zIndex: overlay.style.zIndex
+            });
+        }
+        
+        function hideOverlay() {
+            console.log('HIDING OVERLAY (conditional)');
+            if (!videoHasEnded && !video.paused && !video.ended) {
+                overlay.style.display = 'none';
+                overlay.style.visibility = 'hidden';
+                overlay.style.opacity = '0';
             }
         }
         
-        window.addEventListener('load', () => {
-            if (window.opener) {
-                window.opener.postMessage({
-                    type: 'VIDEO_WINDOW_READY'
-                }, window.location.origin);
-            }
-        });
+        function forceHideOverlay() {
+            console.log('FORCE HIDING OVERLAY');
+            overlay.style.display = 'none';
+            overlay.style.visibility = 'hidden';
+            overlay.style.opacity = '0';
+            overlay.style.zIndex = '-1';
+        }
         
+        // Message handling
         window.addEventListener('message', (event) => {
-            if (event.origin !== window.location.origin) {
-                return;
-            }
+            if (event.origin !== window.location.origin) return;
             
-            try {
-                const { type, data } = event.data;
-                const video = document.getElementById('video-player');
-                
-                if (!video) {
-                    return;
-                }
-                
-                switch (type) {
-                    case 'LOAD_VIDEO':
-                        try {
-                            // Reset flags when loading new video
-                            videoHasEnded = false;
-                            isLoopRestarting = false;
-                            
-                            video.src = data.url;
-                            video.muted = true;
-                            video.controls = false; // Ensure no controls
-                            video.style.display = 'block';
-                            video.style.width = '100%';
-                            video.style.height = '100%';
-                            video.style.objectFit = 'contain';
-                            video.style.background = 'black';
-                            
-                            // Hide overlay when loading new video
-                            hideOverlay();
-                            
-                            // Remove old event listeners to avoid duplicates
-                            video.removeEventListener('loadstart', video._loadStartHandler);
-                            video.removeEventListener('canplay', video._canPlayHandler);
-                            video.removeEventListener('error', video._errorHandler);
-                            video.removeEventListener('loadeddata', video._loadedDataHandler);
-                            
-                            // Create new handlers
-                            video._loadStartHandler = () => {
-                                // Video load started
-                            };
-                            video._canPlayHandler = () => {
-                                // Video can play - ensure overlay is hidden
-                                const overlay = document.getElementById('black-overlay');
-                                if (overlay && !video.paused && !video.ended) {
-                                    overlay.style.display = 'none';
-                                }
-                            };
-                            video._errorHandler = (e) => {
-                                console.error('Video error:', e);
-                            };
-                            video._loadedDataHandler = () => {
-                                // Video data loaded
-                            };
-                            
-                            // Add event listeners
-                            video.addEventListener('loadstart', video._loadStartHandler);
-                            video.addEventListener('canplay', video._canPlayHandler);
-                            video.addEventListener('error', video._errorHandler);
-                            video.addEventListener('loadeddata', video._loadedDataHandler);
-                            
-                            video.load(); // Force reload
-                        } catch (error) {
-                            // Error setting video source
-                        }
-                        break;
-                        
-                    case 'PLAY':
-                        videoHasEnded = false; // Reset ended flag when playing
+            const { type, data } = event.data;
+            
+            switch (type) {
+                case 'LOAD_VIDEO':
+                    videoHasEnded = false;
+                    isLoopRestarting = false;
+                    video.src = data.url;
+                    video.muted = true;
+                    video.controls = false;
+                    hideOverlay();
+                    break;
+                    
+                case 'PLAY':
+                    // Allow play even for ended videos if it's during a loop restart
+                    if (!videoHasEnded && !video.ended || isLoopRestarting) {
+                        videoHasEnded = false;
                         hideOverlay();
-                        video.play().catch(e => {});
-                        break;
-                        
-                    case 'PAUSE':
-                        video.pause();
-                        break;
-                        
-                    case 'SEEK':
-                        if (data && typeof data.time === 'number') {
-                            isReceivingSeek = true;
-                            
-                            const timeDiff = Math.abs(video.currentTime - data.time);
-                            
-                            if (timeDiff > 0.2) {
-                                video.currentTime = data.time;
-                            }
-                            
-                            setTimeout(() => { isReceivingSeek = false; }, 300);
-                        }
-                        break;
-                        
-                    case 'SET_PLAYBACK_RATE':
-                        if (data && typeof data.rate === 'number') {
-                            video.playbackRate = data.rate;
-                        }
-                        break;
-                        
-                    case 'SET_LOOP':
-                        // Loop is now handled centrally by playback.js
-                        // Individual video loop is disabled
-                        video.loop = false;
-                        break;
-                        
-                    case 'RESTART_VIDEO':
-                        // Set flag to prevent premature overlay hiding
-                        isLoopRestarting = true;
-                        videoHasEnded = false; // Reset the ended flag
-                        
-                        // Clear any pending overlay operations
-                        if (overlayTimeout) {
-                            clearTimeout(overlayTimeout);
-                            overlayTimeout = null;
-                        }
-                        
-                        // IMMEDIATELY show overlay to prevent any first frame visibility
-                        preemptiveShowOverlay();
-                        
-                        // Pause video first to ensure clean state
-                        video.pause();
-                        
-                        // Wait a moment for pause to take effect
-                        setTimeout(() => {
-                            // Keep overlay visible and reset video
-                            preemptiveShowOverlay();
-                            video.currentTime = 0;
-                            
-                            // Wait for reset to complete
-                            setTimeout(() => {
-                                // Start playing with overlay still visible
-                                video.play().then(() => {
-                                    // Wait for video to actually start playing
-                                    setTimeout(() => {
-                                        // Only now check if we can hide overlay
-                                        if (video.currentTime > 0.1 && !video.paused && !video.ended) {
-                                            isLoopRestarting = false;
-                                            hideOverlay();
-                                        } else {
-                                            // Video not properly started, try again
-                                            setTimeout(() => {
-                                                if (video.currentTime > 0.1 && !video.paused && !video.ended) {
-                                                    isLoopRestarting = false;
-                                                    hideOverlay();
-                                                }
-                                            }, 100);
-                                        }
-                                    }, 150);
-                                }).catch(e => {
-                                    // Play failed, reset flag
-                                    isLoopRestarting = false;
-                                });
-                            }, 50);
-                        }, 30);
-                        break;
-                }
-            } catch (error) {}
-        });
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const video = document.getElementById('video-player');
-            
-            if (!video) {
-                return;
-            } else {
-                // Ensure no controls are shown
-                video.controls = false;
-                video.setAttribute('controls', 'false');
-                video.removeAttribute('controls');
-            }
-            
-            video.addEventListener('play', () => {
-                // Reset ended flag when video starts playing
-                videoHasEnded = false;
-                
-                // Hide black overlay when video starts playing
-                hideOverlay();
-                
-                if (window.opener && !isReceivingSeek) {
-                    try {
-                        window.opener.postMessage({ type: 'VIDEO_PLAY' }, window.location.origin);
-                    } catch (e) {}
-                }
-            });
-            
-            video.addEventListener('pause', () => {
-                if (window.opener && !isReceivingSeek) {
-                    try {
-                        window.opener.postMessage({ type: 'VIDEO_PAUSE' }, window.location.origin);
-                    } catch (e) {}
-                }
-            });
-            
-            video.addEventListener('seeking', () => {
-                if (!isReceivingSeek) {
-                    lastManualSeekTime = Date.now();
-                }
-            });
-            
-            video.addEventListener('seeked', () => {
-                if (window.opener && !isReceivingSeek) {
-                    const now = Date.now();
-                    if (now - lastManualSeekTime < 1000) {
+                        video.play().catch(e => console.warn('Play failed:', e));
+                    }
+                    break;
+                    
+                case 'PAUSE':
+                    video.pause();
+                    // Only show overlay if video has ended, not for regular pause
+                    if (videoHasEnded || video.ended || (video.duration && video.currentTime >= video.duration - 0.2)) {
+                        console.log('Showing overlay on pause - video has ended');
+                        showOverlay();
+                    } else {
+                        console.log('Not showing overlay on pause - video still has content');
+                        // Don't show overlay for regular pause - let the paused frame be visible
+                    }
+                    break;
+                    
+                case 'SEEK':
+                    if (data && typeof data.time === 'number' && !videoHasEnded) {
+                        isReceivingSeek = true;
+                        video.currentTime = data.time;
+                        setTimeout(() => { isReceivingSeek = false; }, 100);
+                    }
+                    break;
+                    
+                case 'SET_PLAYBACK_RATE':
+                    if (data && typeof data.rate === 'number') {
+                        video.playbackRate = data.rate;
+                    }
+                    break;
+                    
+                case 'SET_LOOP':
+                    video.loop = false;
+                    break;
+                    
+                case 'GET_VIDEO_STATUS':
+                    if (window.opener) {
                         try {
-                            window.opener.postMessage({ 
-                                type: 'VIDEO_SEEKED', 
-                                data: { time: video.currentTime } 
+                            window.opener.postMessage({
+                                type: 'VIDEO_STATUS_RESPONSE',
+                                data: {
+                                    hasEnded: videoHasEnded,
+                                    ended: video.ended,
+                                    paused: video.paused,
+                                    currentTime: video.currentTime,
+                                    duration: video.duration,
+                                    isLoopRestarting: isLoopRestarting
+                                }
                             }, window.location.origin);
                         } catch (e) {}
                     }
-                }
-            });
-            
-            // Additional safety: hide overlay when video is actually playing
-            video.addEventListener('playing', () => {
-                // Only hide if video has actually progressed and hasn't ended
-                if (video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
-                    hideOverlay();
-                }
-            });
-            
-            // Hide overlay when video time updates (playing actively)
-            video.addEventListener('timeupdate', () => {
-                // Check if video has reached the end (within 0.1 seconds of duration)
-                if (video.duration && video.currentTime >= video.duration - 0.1) {
-                    if (!videoHasEnded) {
-                        videoHasEnded = true;
-                        showOverlay();
+                    break;
+                    
+                case 'RESTART_VIDEO':
+                    console.log('=== RESTART_VIDEO received ===');
+                    console.log('Video state before restart:', {
+                        paused: video.paused,
+                        ended: video.ended,
+                        currentTime: video.currentTime,
+                        videoHasEnded: videoHasEnded
+                    });
+                    
+                    isLoopRestarting = true;
+                    videoHasEnded = false;
+                    
+                    // Force hide overlay immediately
+                    forceHideOverlay();
+                    
+                    // Completely stop and reset video
+                    video.pause();
+                    
+                    // Force video to reset by reloading if it's stuck at the end
+                    if (video.ended || video.currentTime >= video.duration - 0.1) {
+                        console.log('Video was at end, forcing reload to reset state');
+                        const currentSrc = video.src;
+                        video.src = '';
+                        video.load();
+                        video.src = currentSrc;
+                        video.load();
                     }
-                }
-                
-                // Only hide overlay if video has progressed beyond first frames and hasn't ended
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
-                    hideOverlay();
-                }
-            });
+                    
+                    // Reset to beginning
+                    video.currentTime = 0;
+                    
+                    // Wait for reset to complete, then play
+                    setTimeout(() => {
+                        console.log('Attempting to play video from beginning, currentTime:', video.currentTime);
+                        video.play().then(() => {
+                            console.log('Video play successful after restart, currentTime:', video.currentTime);
+                            isLoopRestarting = false;
+                            forceHideOverlay();
+                            
+                            // Verify video is actually playing from start
+                            setTimeout(() => {
+                                console.log('Video status after restart:', {
+                                    currentTime: video.currentTime,
+                                    paused: video.paused,
+                                    ended: video.ended
+                                });
+                                forceHideOverlay();
+                            }, 200);
+                        }).catch(e => {
+                            console.warn('Restart play failed:', e);
+                            isLoopRestarting = false;
+                        });
+                    }, 100); // Increased delay to allow for src reload
+                    break;
+                    
+                case 'RESET_VIDEO':
+                    console.log('=== RESET_VIDEO received ===');
+                    isLoopRestarting = false;
+                    videoHasEnded = false;
+                    
+                    video.pause();
+                    
+                    // Force complete video reset
+                    const currentSrc = video.src;
+                    video.src = '';
+                    video.load();
+                    video.src = currentSrc;
+                    video.load();
+                    
+                    video.currentTime = 0;
+                    showOverlay();
+                    
+                    console.log('Video reset complete, currentTime:', video.currentTime);
+                    break;
+            }
+        });
+        
+        // Essential video events
+        video.addEventListener('play', () => {
+            console.log('=== Video play event triggered ===');
+            videoHasEnded = false;
             
-            // Additional safety: hide overlay when video metadata is loaded and ready
-            video.addEventListener('loadedmetadata', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
-                    hideOverlay();
-                }
-            });
+            // Immediately hide overlay when play event fires
+            forceHideOverlay();
             
-            // Video can play through without stopping - hide overlay if playing
-            video.addEventListener('canplaythrough', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
-                    hideOverlay();
-                }
-            });
-            
-            // Windows-specific: Handle video state changes
-            video.addEventListener('loadstart', () => {
-                // Video started loading - prepare for playback
-            });
-            
-            video.addEventListener('progress', () => {
-                // Video is downloading - ensure overlay is ready
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
-                    hideOverlay();
-                }
-            });
-            
-            // Windows-specific: Handle video ready states
-            video.addEventListener('canplay', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
-                    hideOverlay();
-                }
-            });
-            
-            // Windows-specific: Force overlay management on video source changes
-            video.addEventListener('durationchange', () => {
-                if (!video.paused && !video.ended && video.currentTime > 0.1 && !isLoopRestarting && !videoHasEnded) {
-                    hideOverlay();
-                }
-            });
-            
-            // Prevent right-click context menu on video
-            video.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                return false;
-            });
-            
-            // Prevent any mouse interaction that might show controls
-            video.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-            });
-            
-            video.addEventListener('mouseup', (e) => {
-                e.preventDefault();
-            });
-            
-            video.addEventListener('click', (e) => {
-                e.preventDefault();
-            });
-            
-            video.addEventListener('dblclick', (e) => {
-                e.preventDefault();
-            });
-            
-            // Show black overlay when video ends instead of showing any frame
-            video.addEventListener('ended', () => {
-                // Set flag to indicate video has ended
-                videoHasEnded = true;
-                
-                // Windows-specific: Immediate overlay show
+            if (window.opener && !isReceivingSeek) {
+                try {
+                    window.opener.postMessage({ type: 'VIDEO_PLAY' }, window.location.origin);
+                } catch (e) {}
+            }
+        });
+        
+        video.addEventListener('pause', () => {
+            // Only show overlay if video has ended or is very close to the end
+            if (videoHasEnded || video.ended || (video.duration && video.currentTime >= video.duration - 0.2)) {
+                console.log('Video paused at/near end, showing overlay');
                 showOverlay();
-                
-                // Windows-specific: Additional safety checks
-                setTimeout(() => {
+            } else {
+                console.log('Video paused normally, keeping frame visible. Time:', video.currentTime, 'Duration:', video.duration);
+                // Don't show overlay for regular pause - show the paused frame
+            }
+            
+            if (window.opener && !isReceivingSeek) {
+                try {
+                    window.opener.postMessage({ type: 'VIDEO_PAUSE' }, window.location.origin);
+                } catch (e) {}
+            }
+        });
+        
+        video.addEventListener('timeupdate', () => {
+            // Check for end of video with more aggressive timing
+            if (video.duration && video.currentTime >= video.duration - 0.2) {
+                if (!videoHasEnded) {
+                    console.log('=== Video approaching end, showing overlay ===');
+                    videoHasEnded = true;
                     showOverlay();
-                }, 50);
-                
-                setTimeout(() => {
-                    showOverlay();
-                }, 150);
-                
-                // Also post message to parent about video ending
-                if (window.opener && !isReceivingSeek) {
-                    try {
-                        window.opener.postMessage({ type: 'VIDEO_ENDED' }, window.location.origin);
-                    } catch (e) {}
                 }
-            });
+            } else if (!video.paused && video.currentTime > 0.01) {
+                // Always force hide overlay when video is progressing
+                forceHideOverlay();
+            }
+        });
+        
+        video.addEventListener('ended', () => {
+            console.log('=== Video ended event - IMMEDIATELY showing overlay ===');
+            videoHasEnded = true;
+            
+            // IMMEDIATELY show overlay to prevent last frame visibility
+            showOverlay();
+            
+            // Additional safety - show overlay multiple times to ensure it sticks
+            setTimeout(() => showOverlay(), 10);
+            setTimeout(() => showOverlay(), 50);
+            setTimeout(() => showOverlay(), 100);
+            
+            // Reset video position when it ends to prepare for next loop
+            setTimeout(() => {
+                if (videoHasEnded) {
+                    console.log('Resetting video position after end');
+                    video.currentTime = 0;
+                    // Ensure overlay is still visible after reset
+                    showOverlay();
+                }
+            }, 150);
             
             if (window.opener) {
                 try {
+                    window.opener.postMessage({ 
+                        type: 'VIDEO_ENDED',
+                        data: { 
+                            hasEnded: true,
+                            duration: video.duration,
+                            currentTime: video.currentTime
+                        }
+                    }, window.location.origin);
+                } catch (e) {}
+            }
+        });
+        
+        video.addEventListener('seeked', () => {
+            // If seeked to near the end, show overlay
+            if (video.duration && video.currentTime >= video.duration - 0.2) {
+                console.log('Seeked to near end, showing overlay');
+                videoHasEnded = true;
+                showOverlay();
+            }
+            
+            if (window.opener && !isReceivingSeek) {
+                try {
+                    window.opener.postMessage({ 
+                        type: 'VIDEO_SEEKED', 
+                        data: { time: video.currentTime } 
+                    }, window.location.origin);
+                } catch (e) {}
+            }
+        });
+        
+        // Add a playing event listener for additional safety
+        video.addEventListener('playing', () => {
+            console.log('=== Video playing event triggered ===');
+            // Immediately force hide overlay when video is actually playing
+            forceHideOverlay();
+        });
+        
+        // Add loadeddata event to ensure video is ready
+        video.addEventListener('loadeddata', () => {
+            console.log('=== Video loadeddata event ===');
+            // Only hide overlay if video is actually playing
+            if (!video.paused && video.currentTime > 0) {
+                forceHideOverlay();
+            }
+        });
+        
+        // Prevent interactions
+        video.addEventListener('contextmenu', e => e.preventDefault());
+        video.addEventListener('click', e => e.preventDefault());
+        
+        // Initialize - ensure overlay starts hidden and test it works
+        video.controls = false;
+        forceHideOverlay();
+        
+        // Test overlay functionality on startup
+        setTimeout(() => {
+            console.log('Testing overlay...');
+            showOverlay();
+            setTimeout(() => {
+                console.log('Hiding test overlay...');
+                forceHideOverlay();
+            }, 1000);
+        }, 2000);
+        
+        // Debug overlay state periodically
+        setInterval(() => {
+            if (overlay.style.display === 'block') {
+                console.log('Overlay is visible:', {
+                    display: overlay.style.display,
+                    visibility: overlay.style.visibility,
+                    opacity: overlay.style.opacity,
+                    zIndex: overlay.style.zIndex,
+                    videoPaused: video.paused,
+                    videoEnded: video.ended,
+                    videoTime: video.currentTime,
+                    videoHasEnded: videoHasEnded
+                });
+            }
+        }, 1000);
+        
+        // Notify parent window
+        window.addEventListener('load', () => {
+            if (window.opener) {
+                try {
                     window.opener.postMessage({ type: 'VIDEO_WINDOW_READY' }, window.location.origin);
-                } catch (e) {
-                    // Error sending ready message
-                }
+                } catch (e) {}
             }
         });
     </script>

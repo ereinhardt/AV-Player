@@ -1,7 +1,7 @@
 class UDPTrigger {
     constructor() {
         this.enabled = false;
-        this.ip = null; // Will be set dynamically
+        this.ip = '127.0.0.1'; // Default to localhost
         this.port = 9998;
         this.message = 'START';
         this.ws = null;
@@ -19,23 +19,15 @@ class UDPTrigger {
         this.applyButton = document.getElementById('udp-trigger-apply');
         this.statusDisplay = document.getElementById('udp-trigger-status');
 
-        // Initialize with dynamic broadcast IP
-        await this.updateIPFromPreset();
-
         // Set initial values
         if (this.enabledCheckbox) this.enabledCheckbox.checked = this.enabled;
         if (this.ipInput) this.ipInput.value = this.ip;
         if (this.portInput) this.portInput.value = this.port;
         if (this.messageInput) this.messageInput.value = this.message;
         
-        // Set initial preset selection
+        // Set initial preset selection to localhost
         if (this.ipPresetSelect) {
-            if (this.ip === '127.0.0.1') {
-                this.ipPresetSelect.value = '127.0.0.1';
-            } else {
-                // Default to auto-broadcast
-                this.ipPresetSelect.value = 'auto-broadcast';
-            }
+            this.ipPresetSelect.value = '127.0.0.1';
         }
 
         // Add event listeners
@@ -112,8 +104,9 @@ class UDPTrigger {
                 this.ip = this.ipPresetSelect.value;
             }
         }
+        // If no preset or value, default to localhost
         if (!this.ip) {
-            this.ip = await this.getCurrentNetworkBroadcast();
+            this.ip = '127.0.0.1';
         }
     }
 

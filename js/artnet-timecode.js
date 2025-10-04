@@ -3,125 +3,128 @@
 
 class ArtNetTimecode {
     constructor() {
-        this.enabled = true;
-        this.ip = '127.0.0.1'; // Default to localhost
-        this.port = 6454; // Standard Art-Net port
+        this.enabled = false;
+        this.ip = '127.0.0.1';
+        this.port = 6454;
         this.fps = 25;
         this.ws = null;
-        this.pendingConfiguration = false; // Flag to send config after connection
+        this.pendingConfiguration = false;
         this.initializeSettings();
-        this.connectWebSocket(); // Initialize WebSocket immediately
+        this.connectWebSocket();
+    }
+    
+    // Helper functions
+    getElement(id) {
+        return document.getElementById(id);
+    }
+    
+    isValidIP(ip) {
+        return ip && ip.length > 0;
+    }
+    
+    isValidPort(port) {
+        return !isNaN(port) && port >= 1 && port <= 65535;
+    }
+    
+    isValidFPS(fps) {
+        return !isNaN(fps) && fps > 0;
     }
 
     initializeSettings() {
-        // Start with localhost as default
-        document.getElementById('artnet-ip').value = this.ip;
+        // Set checkbox to match default state
+        const enabledCheckbox = this.getElement('artnet-enabled');
+        if (enabledCheckbox) enabledCheckbox.checked = this.enabled;
         
-        // Detect network IP for advanced users, but don't auto-set it
-        this.getUserIP().then(ip => {
-            if (ip) {
-                const ipParts = ip.split('.');
-                const originalIP = ip;
-                ipParts[3] = '255';
-                const broadcastIP = ipParts.join('.');
-                
-                // Show detected IP as tooltip/hint, but keep localhost as default
-                document.getElementById('artnet-ip').title = `Your computer IP: ${originalIP} (Broadcast: ${broadcastIP})`;
-                
-                const infoSpan = document.getElementById('ip-info');
-                if (!infoSpan) {
-                    const ipInput = document.getElementById('artnet-ip');
-                    const infoElement = document.createElement('span');
-                    infoElement.id = 'ip-info';
-                    infoElement.className = 'ip-info';
-                    infoElement.textContent = `(My IP in the current network: ${originalIP})`;
-                    ipInput.parentNode.appendChild(infoElement);
-                }
-            }
-            
-            // Send initial configuration to server with localhost default
-            this.pendingConfiguration = true;
-            this.sendConfigurationToServerWhenReady();
-            
-        }).catch(error => {
-            // Send initial configuration to server even if IP detection failed
-            this.pendingConfiguration = true;
-            this.sendConfigurationToServerWhenReady();
-        });
-
-        // Check if port input exists, if not we're probably in the standalone debug context
-        const portInput = document.getElementById('artnet-port');
-        if (portInput) {
-            portInput.value = this.port;
-        }
-
-        // Initialize IP preset selector
+        // Set initial values
+        this.getElement('artnet-ip').value = this.ip;
+        const portInput = this.getElement('artnet-port');
+        if (portInput) portInput.value = this.port;
+        
+        // Setup IP detection and presets
+        this.setupIPDetection();
         this.initializeIPPresets();
-
-        document.getElementById('apply-settings-btn').addEventListener('click', () => {
-            this.applySettings();
-        });
-
-        document.getElementById('artnet-enabled').addEventListener('change', (e) => {
+        
+        // Add event listeners
+        this.getElement('apply-settings-btn').addEventListener('click', () => this.applySettings());
+        this.getElement('artnet-enabled').addEventListener('change', (e) => {
             this.enabled = e.target.checked;
             this.showStatus(this.enabled ? 'Art-Net enabled' : 'Art-Net disabled', 'success');
             this.updateStatusDisplay();
         });
-
-        // Initial status display update
+        
         this.updateStatusDisplay();
+    }
+    
+    setupIPDetection() {
+        this.getUserIP().then(ip => {
+            if (ip) {
+                const ipParts = ip.split('.');
+                const broadcastIP = [...ipParts.slice(0, 3), '255'].join('.');
+                
+                this.getElement('artnet-ip').title = `Your computer IP: ${ip} (Broadcast: ${broadcastIP})`;
+                
+                if (!this.getElement('ip-info')) {
+                    const ipInput = this.getElement('artnet-ip');
+                    const infoElement = document.createElement('span');
+                    infoElement.id = 'ip-info';
+                    infoElement.className = 'ip-info';
+                    infoElement.textContent = `(My IP in the current network: ${ip})`;
+                    ipInput.parentNode.appendChild(infoElement);
+                }
+            }
+            this.pendingConfiguration = true;
+            this.sendConfigurationToServerWhenReady();
+        }).catch(() => {
+            this.pendingConfiguration = true;
+            this.sendConfigurationToServerWhenReady();
+        });
     }
 
     applySettings() {
         try {
-            const newFps = parseFloat(document.getElementById('fps-select').value);
-            
-            // Get IP from preset or input field
-            const presetSelect = document.getElementById('artnet-ip-preset');
-            const ipInput = document.getElementById('artnet-ip');
-            let newIp;
-            
-            if (presetSelect && presetSelect.value !== 'custom' && presetSelect.value !== 'auto-broadcast') {
-                newIp = presetSelect.value;
-            } else {
-                // For custom and auto-broadcast, use the value from the input field
-                newIp = ipInput.value.trim();
-            }
-            
-            const newPort = parseInt(document.getElementById('artnet-port').value);
-            const newEnabled = document.getElementById('artnet-enabled').checked;
+            const newFps = parseFloat(this.getElement('fps-select').value);
+            const newIp = this.getIPFromForm();
+            const newPort = parseInt(this.getElement('artnet-port').value);
+            const newEnabled = this.getElement('artnet-enabled').checked;
 
-            if (!newIp || newIp.length === 0) {
+            // Validate inputs
+            if (!this.isValidIP(newIp)) {
                 this.showStatus('Invalid IP address', 'error');
                 return;
             }
-
-            if (isNaN(newPort) || newPort < 1 || newPort > 65535) {
+            if (!this.isValidPort(newPort)) {
                 this.showStatus('Invalid port number (1-65535)', 'error');
                 return;
             }
-
-            if (isNaN(newFps) || newFps <= 0) {
+            if (!this.isValidFPS(newFps)) {
                 this.showStatus('Invalid FPS value', 'error');
                 return;
             }
 
+            // Apply settings
             this.fps = newFps;
             this.ip = newIp;
             this.port = newPort;
             this.enabled = newEnabled;
 
-            // Send configuration to server
             this.sendConfigurationToServer();
-
         } catch (error) {
             this.showStatus('Error applying settings', 'error');
         }
     }
+    
+    getIPFromForm() {
+        const presetSelect = this.getElement('artnet-ip-preset');
+        const ipInput = this.getElement('artnet-ip');
+        
+        if (presetSelect && presetSelect.value !== 'custom' && presetSelect.value !== 'auto-broadcast') {
+            return presetSelect.value;
+        }
+        return ipInput.value.trim();
+    }
 
     sendConfigurationToServerWhenReady() {
-        // Check if WebSocket is ready, if not, mark as pending
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws?.readyState === WebSocket.OPEN) {
             this.sendConfigurationToServer();
             this.pendingConfiguration = false;
         } else {
@@ -130,7 +133,6 @@ class ArtNetTimecode {
     }
 
     sendConfigurationToServer() {
-        // Send configuration update to server
         this.sendToServer({
             type: 'configure-artnet',
             ip: this.ip,
@@ -138,8 +140,6 @@ class ArtNetTimecode {
             enabled: this.enabled,
             fps: this.fps
         });
-        
-        // Update status display
         this.updateStatusDisplay();
     }
 
@@ -154,16 +154,16 @@ class ArtNetTimecode {
     }
 
     showStatus(message, type = 'success') {
-        const statusSpan = document.getElementById('settings-status');
-        if (statusSpan) {
-            statusSpan.textContent = message;
-            statusSpan.className = `settings-status ${type}`;
-            
-            setTimeout(() => {
-                statusSpan.style.opacity = '0';
-                setTimeout(() => statusSpan.textContent = '', 300); // Clear text after fade
-            }, 3000);
-        }
+        const statusSpan = this.getElement('settings-status');
+        if (!statusSpan) return;
+        
+        statusSpan.textContent = message;
+        statusSpan.className = `settings-status ${type}`;
+        
+        setTimeout(() => {
+            statusSpan.style.opacity = '0';
+            setTimeout(() => statusSpan.textContent = '', 300);
+        }, 3000);
     }
 
     async getUserIP() {
@@ -185,47 +185,42 @@ class ArtNetTimecode {
                 let localIP = null;
                 
                 pc.onicecandidate = (ice) => {
-                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                    if (!ice?.candidate?.candidate) return;
                     
-                    const candidate = ice.candidate.candidate;
-                    const ipMatches = candidate.match(/(\d+\.\d+\.\d+\.\d+)/g);
+                    const ipMatches = ice.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/g);
+                    if (!ipMatches) return;
                     
-                    if (ipMatches) {
-                        ipMatches.forEach(ip => {
-                            if (!ip.startsWith('127.') && 
-                                !ip.startsWith('169.254.') && 
-                                !ip.startsWith('0.')) {
-                                foundIPs.add(ip);
-                                
-                                if (ip.startsWith('192.168.') || 
-                                    ip.startsWith('10.') || 
-                                    ip.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) {
-                                    localIP = ip;
-                                }
-                            }
-                        });
-                        
-                        if (localIP) {
-                            pc.close();
-                            resolve(localIP);
+                    ipMatches.forEach(ip => {
+                        if (this.isValidLocalIP(ip)) {
+                            foundIPs.add(ip);
+                            if (this.isPrivateIP(ip)) localIP = ip;
                         }
+                    });
+                    
+                    if (localIP) {
+                        pc.close();
+                        resolve(localIP);
                     }
                 };
                 
                 setTimeout(() => {
                     pc.close();
-                    if (localIP) {
-                        resolve(localIP);
-                    } else if (foundIPs.size > 0) {
-                        resolve(Array.from(foundIPs)[0]);
-                    } else {
-                        resolve(null);
-                    }
+                    resolve(localIP || (foundIPs.size > 0 ? Array.from(foundIPs)[0] : null));
                 }, 5000);
             });
         } catch (error) {
             return null;
         }
+    }
+    
+    isValidLocalIP(ip) {
+        return !ip.startsWith('127.') && !ip.startsWith('169.254.') && !ip.startsWith('0.');
+    }
+    
+    isPrivateIP(ip) {
+        return ip.startsWith('192.168.') || 
+               ip.startsWith('10.') || 
+               ip.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./); 
     }
 
     timeToSMPTE(currentTime) {
@@ -278,15 +273,12 @@ class ArtNetTimecode {
     }
 
     sendTimecode(currentTime) {
-        if (!this.enabled) {
-            return;
-        }
+        if (!this.enabled) return;
         
         try {
             const timecode = this.timeToSMPTE(currentTime);
             const packet = this.createArtNetPacket(timecode);
             
-            // Send via simple WebSocket message to server
             this.sendToServer({
                 type: 'artnet-timecode',
                 packet: Array.from(packet),
@@ -295,9 +287,7 @@ class ArtNetTimecode {
                 port: this.port
             });
             
-            // Update status display with current timecode
             this.updateStatusDisplay(timecode.formatted);
-            
             return timecode;
         } catch (error) {
             return null;
@@ -305,12 +295,11 @@ class ArtNetTimecode {
     }
 
     sendToServer(data) {
-        // Simple WebSocket connection for Art-Net forwarding
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             this.connectWebSocket();
         }
         
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws?.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
         }
     }
@@ -323,9 +312,6 @@ class ArtNetTimecode {
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
-                // Silent connection
-                
-                // Send pending configuration if needed
                 if (this.pendingConfiguration) {
                     this.sendConfigurationToServer();
                     this.pendingConfiguration = false;
@@ -334,19 +320,17 @@ class ArtNetTimecode {
             
             this.ws.onmessage = (event) => {
                 try {
-                    const message = JSON.parse(event.data);
-                    this.handleServerMessage(message);
+                    this.handleServerMessage(JSON.parse(event.data));
                 } catch (error) {
                     // Silent error handling
                 }
             };
             
             this.ws.onclose = () => {
-                // Auto-reconnect after 2 seconds
                 setTimeout(() => this.connectWebSocket(), 2000);
             };
             
-            this.ws.onerror = (error) => {
+            this.ws.onerror = () => {
                 // Silent error handling
             };
             
@@ -356,40 +340,33 @@ class ArtNetTimecode {
     }
 
     handleServerMessage(message) {
-        switch (message.type) {
-            case 'config-updated':
-                this.showStatus(message.message, 'success');
-                break;
-                
-            case 'error':
-                this.showStatus(message.message, 'error');
-                break;
-                
-            case 'status':
-            default:
-                // Silent handling for status and unknown messages
-                break;
+        const { type, message: msg } = message;
+        
+        if (type === 'config-updated') {
+            this.showStatus(msg, 'success');
+        } else if (type === 'error') {
+            this.showStatus(msg, 'error');
         }
+        // Silent handling for status and unknown messages
     }
 
     initializeIPPresets() {
-        const presetSelect = document.getElementById('artnet-ip-preset');
-        const ipInput = document.getElementById('artnet-ip');
+        const presetSelect = this.getElement('artnet-ip-preset');
+        const ipInput = this.getElement('artnet-ip');
         
         if (!presetSelect || !ipInput) return;
 
-        // Set current IP in preset if it matches
+        // Check if current IP matches a preset
         const currentIP = ipInput.value;
-        let isPresetIP = false;
-        for (let option of presetSelect.options) {
+        const isPresetIP = Array.from(presetSelect.options).some(option => {
             if (option.value === currentIP) {
                 presetSelect.value = currentIP;
-                isPresetIP = true;
-                break;
+                return true;
             }
-        }
+            return false;
+        });
         
-        // Hide input field initially if it's a preset IP
+        // Show/hide input field based on preset selection
         if (isPresetIP) {
             ipInput.style.display = 'none';
         } else {
@@ -397,7 +374,7 @@ class ArtNetTimecode {
             ipInput.style.display = 'block';
         }
         
-        // Add event listener for preset changes
+        // Handle preset changes
         presetSelect.addEventListener('change', () => {
             const selectedValue = presetSelect.value;
             if (selectedValue !== 'custom') {
