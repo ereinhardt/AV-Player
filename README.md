@@ -23,7 +23,7 @@ node server.js
 - (ONLY Mac-User): If you use macOS and an audio interface with more than 2 outputs, set it as the default output device (in your OS) to access all channels in the software.
 
 ## Debug:
-- In the `Debug` folder, there is a TouchDesigner patch for receiving Art-Net-Timecode (`HH:MM:SS:FF`) and UDP-Trigger messages in the network.
+- In the `Debug` folder, there is a TouchDesigner patch for receiving Art-Net-Timecode (`HH:MM:SS:FF`) and UDP-Trigger messages in the current network.
 - It folder also contains test video and audio material. 
 
 ## Known Bugs (TODO):
