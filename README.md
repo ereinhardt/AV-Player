@@ -22,6 +22,10 @@ node server.js
 - All important information on how to handle the BrightSign script can be found as comments within the script itself.
 - (ONLY Mac-User): If you use macOS and an audio interface with more than 2 outputs, set it as the default output device (in your OS) to access all channels in the software.
 
+## Debug:
+- In the `Debug` folder, there is a TouchDesigner patch for receiving Art-Net and UDP messages in the network.
+- It folder also contains test video and audio material. 
+
 ## Known Bugs (TODO):
 
 –No Bugs know–
