@@ -20,7 +20,7 @@ node server.js
 - Supported file formats: `MP4`, `MP3`, `WAV`.
 - Tested primarily with Google Chrome.
 - All important information on how to handle the BrightSign script can be found as comments within the script itself.
-- (ONLY Mac-User): If you use macOS and an audio interface with more than 2 outputs, set it as the default output device (in your OS) to access all channels in the software.
+- (ONLY Mac-User): If you use macOS and an audio interface with more than 2 outputs, set it as the default output device (in your OS) to access more then 2 channels in the software.
 
 ## Debug:
 - In the `debug` folder, there is a TouchDesigner patch for receiving Art-Net-Timecode (`HH:MM:SS:FF`) and UDP-Trigger messages in the current network.
