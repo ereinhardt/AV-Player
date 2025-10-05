@@ -1,43 +1,51 @@
 // Video Tab Management
-const videoWindows = {};
-window.videoStates = window.videoStates || {};
-
-// Utility functions
-const isWindowValid = (trackIndex) => 
-  videoWindows[trackIndex] && !videoWindows[trackIndex].closed;
-
-const postToVideoWindow = (trackIndex, message) => {
-  if (isWindowValid(trackIndex)) {
-    videoWindows[trackIndex].postMessage(message, window.location.origin);
-    return true;
+class VideoManager {
+  constructor() {
+    this.windows = {};
+    this.states = {};
+    this.syncPaused = false;
   }
-  return false;
-};
 
-const shouldSkipVideoAction = (trackIndex) => {
-  return window._isVideoSyncing || 
-    (!window.isVideoReset && !window.isLoopRestarting && 
-     window.videoStates?.[trackIndex]?.hasEnded);
-};
+  isWindowValid(trackIndex) {
+    return this.windows[trackIndex] && !this.windows[trackIndex].closed;
+  }
+
+  postMessage(trackIndex, message) {
+    if (this.isWindowValid(trackIndex)) {
+      this.windows[trackIndex].postMessage(message, window.location.origin);
+      return true;
+    }
+    return false;
+  }
+
+  shouldSkipAction(trackIndex) {
+    return window._isVideoSyncing || 
+      (!window.isVideoReset && !window.isLoopRestarting && 
+       this.states[trackIndex]?.hasEnded);
+  }
+}
+
+const videoManager = new VideoManager();
+window.videoStates = videoManager.states;
 
 const createVideoWindow = (trackIndex) => {
-  if (isWindowValid(trackIndex)) {
-    videoWindows[trackIndex].focus();
-    return videoWindows[trackIndex];
+  if (videoManager.isWindowValid(trackIndex)) {
+    videoManager.windows[trackIndex].focus();
+    return videoManager.windows[trackIndex];
   }
 
   const windowFeatures = "width=800,height=600,scrollbars=no,resizable=yes,status=no,location=no,toolbar=no,menubar=no";
 
   try {
-    videoWindows[trackIndex] = window.open("./video.html", `VideoPlayer_${trackIndex}`, windowFeatures);
+    videoManager.windows[trackIndex] = window.open("./video.html", `VideoPlayer_${trackIndex}`, windowFeatures);
 
-    if (!videoWindows[trackIndex]) {
+    if (!videoManager.windows[trackIndex]) {
       alert("Video window could not be opened. Please allow popups for this site.");
       return null;
     }
 
-    // Listen for video window ready message
-    const messageHandler = (event) => {
+    // Setup message handler for video window ready
+    const handleWindowReady = (event) => {
       if (event.origin !== window.location.origin || event.data.type !== "VIDEO_WINDOW_READY") return;
       
       const pendingFile = window[`_pendingVideoFile_${trackIndex}`];
@@ -48,29 +56,29 @@ const createVideoWindow = (trackIndex) => {
       }
     };
 
-    window.addEventListener("message", messageHandler);
-    videoWindows[trackIndex]._messageHandler = messageHandler;
+    window.addEventListener("message", handleWindowReady);
+    videoManager.windows[trackIndex]._messageHandler = handleWindowReady;
   } catch (error) {
     console.error("Failed to create video window:", error);
     return null;
   }
 
-  return videoWindows[trackIndex];
+  return videoManager.windows[trackIndex];
 };
 
 const loadVideoIntoWindow = (videoFile, videoAudio, trackIndex) => {
-  if (!isWindowValid(trackIndex)) {
+  if (!videoManager.isWindowValid(trackIndex)) {
     createVideoWindow(trackIndex);
   }
 
-  const videoWindow = videoWindows[trackIndex];
+  const videoWindow = videoManager.windows[trackIndex];
   if (!videoWindow) return;
 
   const sendVideoData = () => {
     try {
       const videoURL = URL.createObjectURL(videoFile);
 
-      postToVideoWindow(trackIndex, {
+      videoManager.postMessage(trackIndex, {
         type: "LOAD_VIDEO",
         data: { url: videoURL, filename: videoFile.name }
       });
@@ -78,7 +86,7 @@ const loadVideoIntoWindow = (videoFile, videoAudio, trackIndex) => {
       // Send current loop status
       const loopCheckbox = document.getElementById("loop-checkbox");
       if (loopCheckbox) {
-        postToVideoWindow(trackIndex, {
+        videoManager.postMessage(trackIndex, {
           type: "SET_LOOP",
           data: { loop: loopCheckbox.checked }
         });
@@ -96,95 +104,72 @@ const loadVideoIntoWindow = (videoFile, videoAudio, trackIndex) => {
 
   // Wait for window to be ready, then send data
   setTimeout(() => {
-    if (isWindowValid(trackIndex)) {
+    if (videoManager.isWindowValid(trackIndex)) {
       sendVideoData();
     }
   }, 500);
 };
 
 const syncVideoWithAudio = (audio, trackIndex) => {
-  if (!isWindowValid(trackIndex)) return;
+  if (!videoManager.isWindowValid(trackIndex)) return;
 
-  // Sync state management
   let lastSyncTime = 0;
   let lastAudioTime = 0;
-  let syncPaused = false;
 
-  // Global sync control functions
-  window.pauseVideoSync = () => { syncPaused = true; };
-  window.resumeVideoSync = () => { syncPaused = false; };
+  // Helper functions
+  const hasEnded = () => !window.isVideoReset && !window.isLoopRestarting && 
+    (videoManager.states[trackIndex]?.hasEnded || 
+     (audio?.tagName === "VIDEO" && (audio.ended || audio.currentTime >= audio.duration - 0.1)));
 
-  // Helper to check if audio/video has ended
-  const hasEnded = () => {
-    return !window.isVideoReset && !window.isLoopRestarting && 
-           (window.videoStates?.[trackIndex]?.hasEnded ||
-            (audio?.tagName === "VIDEO" && (audio.ended || audio.currentTime >= audio.duration - 0.1)));
-  };
+  const sendMessage = (type, data = {}) => videoManager.postMessage(trackIndex, { type, data });
 
-  // Sync play/pause state
+  // Sync handlers
   const syncPlayPause = () => {
-    if (shouldSkipVideoAction(trackIndex)) return;
+    if (videoManager.shouldSkipAction(trackIndex)) return;
 
-    const message = { type: audio.paused ? "PAUSE" : "PLAY" };
-    
-    if (!audio.paused) {
-      if (window.isLoopRestarting || window.isVideoReset) {
-        message.type = audio.currentTime < 0.1 ? "RESTART_VIDEO" : "PLAY";
-      } else if (hasEnded()) {
-        return; // Don't play if ended
-      }
+    if (audio.paused) {
+      sendMessage("PAUSE");
+    } else if (hasEnded()) {
+      return; // Don't play if ended
+    } else {
+      const messageType = (window.isLoopRestarting || window.isVideoReset) && audio.currentTime < 0.1 
+        ? "RESTART_VIDEO" : "PLAY";
+      sendMessage(messageType);
     }
-
-    postToVideoWindow(trackIndex, message);
   };
 
-  // Sync time position
   const syncTime = () => {
-    if (shouldSkipVideoAction(trackIndex) || syncPaused || hasEnded()) return;
+    if (videoManager.shouldSkipAction(trackIndex) || videoManager.syncPaused || hasEnded()) return;
 
-    const currentAudioTime = audio.currentTime;
-    const timeDiff = Math.abs(currentAudioTime - lastAudioTime);
+    const currentTime = audio.currentTime;
+    const timeDiff = Math.abs(currentTime - lastAudioTime);
     const timeSinceLastSync = Date.now() - lastSyncTime;
 
-    // Skip sync during loop operations (time jumps back to 0)
-    if (currentAudioTime < 1.0 && lastAudioTime > 10.0) {
-      lastAudioTime = currentAudioTime;
+    // Skip sync during loop operations
+    if (currentTime < 1.0 && lastAudioTime > 10.0) {
+      lastAudioTime = currentTime;
       return;
     }
 
-    // Sync on major jumps or significant drift
+    // Sync on major jumps or drift
     if (timeDiff > 1.0 || (timeSinceLastSync > 5000 && timeDiff > 0.3)) {
       lastSyncTime = Date.now();
-      postToVideoWindow(trackIndex, {
-        type: "SEEK",
-        data: { time: currentAudioTime }
-      });
+      sendMessage("SEEK", { time: currentTime });
     }
 
-    lastAudioTime = currentAudioTime;
+    lastAudioTime = currentTime;
   };
 
-  // Sync seeking
   const syncSeek = () => {
-    if (shouldSkipVideoAction(trackIndex)) return;
-
-    postToVideoWindow(trackIndex, {
-      type: "SEEK",
-      data: { time: audio.currentTime }
-    });
-
+    if (videoManager.shouldSkipAction(trackIndex)) return;
+    sendMessage("SEEK", { time: audio.currentTime });
     lastAudioTime = audio.currentTime;
     lastSyncTime = Date.now();
   };
 
-  // Sync playback rate
   const syncPlaybackRate = () => {
-    if (shouldSkipVideoAction(trackIndex)) return;
-
-    postToVideoWindow(trackIndex, {
-      type: "SET_PLAYBACK_RATE",
-      data: { rate: audio.playbackRate }
-    });
+    if (videoManager.shouldSkipAction(trackIndex)) return;
+    sendMessage("SET_PLAYBACK_RATE", { rate: audio.playbackRate });
   };
 
   // Clean up existing listeners
@@ -194,24 +179,24 @@ const syncVideoWithAudio = (audio, trackIndex) => {
     });
   }
 
-  // Add event listeners
-  const listeners = [
-    { event: "play", listener: syncPlayPause },
-    { event: "pause", listener: syncPlayPause },
-    { event: "timeupdate", listener: syncTime },
-    { event: "ratechange", listener: syncPlaybackRate },
-    { event: "seeked", listener: syncSeek }
+  // Setup event listeners
+  const eventListeners = [
+    ["play", syncPlayPause],
+    ["pause", syncPlayPause],
+    ["timeupdate", syncTime],
+    ["ratechange", syncPlaybackRate],
+    ["seeked", syncSeek]
   ];
 
-  listeners.forEach(({ event, listener }) => {
+  eventListeners.forEach(([event, listener]) => {
     audio.addEventListener(event, listener);
   });
 
-  audio._videoSyncListeners = listeners;
+  audio._videoSyncListeners = eventListeners.map(([event, listener]) => ({ event, listener }));
 
   // Initial sync
   setTimeout(() => {
-    if (!shouldSkipVideoAction(trackIndex)) {
+    if (!videoManager.shouldSkipAction(trackIndex)) {
       syncPlayPause();
       if (audio.currentTime > 1.0) syncSeek();
       syncPlaybackRate();
@@ -219,19 +204,20 @@ const syncVideoWithAudio = (audio, trackIndex) => {
       // Sync initial loop status
       const loopCheckbox = document.getElementById("loop-checkbox");
       if (loopCheckbox) {
-        postToVideoWindow(trackIndex, {
-          type: "SET_LOOP",
-          data: { loop: loopCheckbox.checked }
-        });
+        sendMessage("SET_LOOP", { loop: loopCheckbox.checked });
       }
     }
   }, 500);
+
+  // Global sync control functions
+  window.pauseVideoSync = () => { videoManager.syncPaused = true; };
+  window.resumeVideoSync = () => { videoManager.syncPaused = false; };
 };
 
 // Update video loop status for all windows
 const updateVideoLoopStatus = (isLooping) => {
-  Object.keys(videoWindows).forEach((trackIndex) => {
-    postToVideoWindow(trackIndex, {
+  Object.keys(videoManager.windows).forEach((trackIndex) => {
+    videoManager.postMessage(trackIndex, {
       type: "SET_LOOP",
       data: { loop: isLooping }
     });
@@ -252,13 +238,13 @@ const setupVideoTrackHandling = () => {
       const pendingFile = window[`_pendingVideoFile_${trackDataIndex}`];
       const pendingAudio = window[`_pendingVideoAudio_${trackDataIndex}`];
 
-      if (!isWindowValid(trackDataIndex)) {
+      if (!videoManager.isWindowValid(trackDataIndex)) {
         createVideoWindow(trackDataIndex);
         if (pendingFile) {
           loadVideoIntoWindow(pendingFile, pendingAudio, trackDataIndex);
         }
       } else {
-        videoWindows[trackDataIndex].focus();
+        videoManager.windows[trackDataIndex].focus();
         // Reload video if window exists but needs refresh
         if (pendingFile) {
           loadVideoIntoWindow(pendingFile, pendingAudio, trackDataIndex);
@@ -268,5 +254,5 @@ const setupVideoTrackHandling = () => {
   });
 };
 
-// Make videoWindows globally accessible
-window.videoWindows = videoWindows;
+// Make videoManager globally accessible for backward compatibility
+window.videoWindows = videoManager.windows;

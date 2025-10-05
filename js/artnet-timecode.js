@@ -7,48 +7,43 @@ class ArtNetTimecode {
     this.ws = null;
     this.isConnected = false;
     this.pendingConfiguration = false;
+    
+    // Cache DOM elements
+    this.elements = {
+      enabled: document.getElementById("artnet-enabled"),
+      ip: document.getElementById("artnet-ip"),
+      port: document.getElementById("artnet-port"),
+      fps: document.getElementById("fps-select"),
+      preset: document.getElementById("artnet-ip-preset"),
+      applyBtn: document.getElementById("apply-settings-btn"),
+      status: document.getElementById("artnet-status-display"),
+      settingsStatus: document.getElementById("settings-status")
+    };
+    
     this.initializeSettings();
     this.connectWebSocket();
   }
 
-  getElement(id) {
-    return document.getElementById(id);
-  }
-
-  isValidIP(ip) {
-    return ip && ip.length > 0;
-  }
-
-  isValidPort(port) {
-    return !isNaN(port) && port >= 1 && port <= 65535;
-  }
-
-  isValidFPS(fps) {
-    return !isNaN(fps) && fps > 0;
-  }
-
   initializeSettings() {
-    // Set checkbox to match default state
-    const enabledCheckbox = this.getElement("artnet-enabled");
-    if (enabledCheckbox) enabledCheckbox.checked = this.enabled;
-
     // Set initial values
-    this.getElement("artnet-ip").value = this.ip;
-    const portInput = this.getElement("artnet-port");
-    if (portInput) portInput.value = this.port;
+    if (this.elements.enabled) this.elements.enabled.checked = this.enabled;
+    if (this.elements.ip) this.elements.ip.value = this.ip;
+    if (this.elements.port) this.elements.port.value = this.port;
 
     // Setup IP detection and presets
     this.setupIPDetection();
     this.initializeIPPresets();
 
     // Add event listeners
-    this.getElement("apply-settings-btn").addEventListener("click", () =>
-      this.applySettings()
-    );
-    this.getElement("artnet-enabled").addEventListener("change", (e) => {
-      this.enabled = e.target.checked;
-      this.updateStatusDisplay();
-    });
+    if (this.elements.applyBtn) {
+      this.elements.applyBtn.addEventListener("click", () => this.applySettings());
+    }
+    if (this.elements.enabled) {
+      this.elements.enabled.addEventListener("change", (e) => {
+        this.enabled = e.target.checked;
+        this.updateStatusDisplay();
+      });
+    }
 
     this.updateStatusDisplay();
   }
@@ -56,21 +51,19 @@ class ArtNetTimecode {
   setupIPDetection() {
     this.getUserIP()
       .then((ip) => {
-        if (ip) {
+        if (ip && this.elements.ip) {
           const ipParts = ip.split(".");
           const broadcastIP = [...ipParts.slice(0, 3), "255"].join(".");
+          
+          this.elements.ip.title = `Your computer IP: ${ip} (Broadcast: ${broadcastIP})`;
 
-          this.getElement(
-            "artnet-ip"
-          ).title = `Your computer IP: ${ip} (Broadcast: ${broadcastIP})`;
-
-          if (!this.getElement("ip-info")) {
-            const ipInput = this.getElement("artnet-ip");
+          // Add IP info if not exists
+          if (!document.getElementById("ip-info")) {
             const infoElement = document.createElement("span");
             infoElement.id = "ip-info";
             infoElement.className = "ip-info";
             infoElement.textContent = `(My IP in the current network: ${ip})`;
-            ipInput.parentNode.appendChild(infoElement);
+            this.elements.ip.parentNode.appendChild(infoElement);
           }
         }
         this.pendingConfiguration = true;
@@ -83,37 +76,31 @@ class ArtNetTimecode {
   }
 
   applySettings() {
-    try {
-      const newFps = parseFloat(this.getElement("fps-select").value);
-      const newIp = this.getIPFromForm();
-      const newPort = parseInt(this.getElement("artnet-port").value);
-      const newEnabled = this.getElement("artnet-enabled").checked;
+    const newFps = parseFloat(this.elements.fps?.value || this.fps);
+    const newIp = this.getIPFromForm();
+    const newPort = parseInt(this.elements.port?.value || this.port);
+    const newEnabled = this.elements.enabled?.checked || false;
 
-      if (!this.isValidIP(newIp)) return;
-      if (!this.isValidPort(newPort)) return;
-      if (!this.isValidFPS(newFps)) return;
+    // Simple validation
+    if (!newIp || newIp.trim().length === 0) return;
+    if (isNaN(newPort) || newPort < 1 || newPort > 65535) return;
+    if (isNaN(newFps) || newFps <= 0) return;
 
-      this.fps = newFps;
-      this.ip = newIp;
-      this.port = newPort;
-      this.enabled = newEnabled;
+    this.fps = newFps;
+    this.ip = newIp.trim();
+    this.port = newPort;
+    this.enabled = newEnabled;
 
-      this.sendConfigurationToServer();
-    } catch (error) {}
+    this.sendConfigurationToServer();
   }
 
   getIPFromForm() {
-    const presetSelect = this.getElement("artnet-ip-preset");
-    const ipInput = this.getElement("artnet-ip");
-
-    if (
-      presetSelect &&
-      presetSelect.value !== "custom" &&
-      presetSelect.value !== "auto-broadcast"
-    ) {
-      return presetSelect.value;
+    if (this.elements.preset?.value && 
+        this.elements.preset.value !== "custom" && 
+        this.elements.preset.value !== "auto-broadcast") {
+      return this.elements.preset.value;
     }
-    return ipInput.value.trim();
+    return this.elements.ip?.value?.trim() || this.ip;
   }
 
   sendConfigurationToServerWhenReady() {
@@ -137,81 +124,67 @@ class ArtNetTimecode {
   }
 
   updateStatusDisplay(currentTimecode = "00:00:00:00") {
-    const statusDisplay = document.getElementById("artnet-status-display");
-    if (statusDisplay) {
-      let status = "";
-      if (this.enabled && this.isConnected) {
-        status = "connected";
-      } else if (!this.isConnected) {
-        // Show error (red) whenever server is disconnected, regardless of enabled state
-        status = "error";
-      } else if (this.enabled && !this.isConnected) {
-        status = "error";
-      }
-
-      const fpsText = `${this.fps}fps`;
-      statusDisplay.textContent = `(${this.ip}:${this.port} / ${fpsText} / ${currentTimecode})`;
-      statusDisplay.className = `artnet-status ${status}`;
+    if (!this.elements.status) return;
+    
+    let status = "";
+    if (!this.isConnected) {
+      status = "error";
+    } else if (this.enabled) {
+      status = "connected";
+    } else {
+      status = "disabled";
     }
+
+    const fpsText = `${this.fps}fps`;
+    this.elements.status.textContent = `(${this.ip}:${this.port} / ${fpsText} / ${currentTimecode})`;
+    this.elements.status.className = `artnet-status ${status}`;
   }
 
   showStatus(message, type = "success") {
-    const statusSpan = this.getElement("settings-status");
-    if (!statusSpan) return;
+    if (!this.elements.settingsStatus) return;
 
-    statusSpan.textContent = message;
-    statusSpan.className = `settings-status ${type}`;
+    this.elements.settingsStatus.textContent = message;
+    this.elements.settingsStatus.className = `settings-status ${type}`;
 
     setTimeout(() => {
-      statusSpan.style.opacity = "0";
-      setTimeout(() => (statusSpan.textContent = ""), 300);
+      this.elements.settingsStatus.style.opacity = "0";
+      setTimeout(() => (this.elements.settingsStatus.textContent = ""), 300);
     }, 3000);
   }
 
   async getUserIP() {
     try {
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun.stunprotocol.org:3478" },
-        ],
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
       });
 
       pc.createDataChannel("");
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+      await pc.setLocalDescription(await pc.createOffer());
 
       return new Promise((resolve) => {
-        const foundIPs = new Set();
-        let localIP = null;
-
+        let resolved = false;
+        
         pc.onicecandidate = (ice) => {
-          if (!ice?.candidate?.candidate) return;
+          if (resolved || !ice?.candidate?.candidate) return;
 
-          const ipMatches =
-            ice.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/g);
-          if (!ipMatches) return;
-
-          ipMatches.forEach((ip) => {
+          const ipMatch = ice.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+          if (ipMatch) {
+            const ip = ipMatch[1];
             if (this.isValidLocalIP(ip)) {
-              foundIPs.add(ip);
-              if (this.isPrivateIP(ip)) localIP = ip;
+              resolved = true;
+              pc.close();
+              resolve(ip);
             }
-          });
-
-          if (localIP) {
-            pc.close();
-            resolve(localIP);
           }
         };
 
         setTimeout(() => {
-          pc.close();
-          resolve(
-            localIP || (foundIPs.size > 0 ? Array.from(foundIPs)[0] : null)
-          );
-        }, 5000);
+          if (!resolved) {
+            resolved = true;
+            pc.close();
+            resolve(null);
+          }
+        }, 3000);
       });
     } catch (error) {
       return null;
@@ -219,19 +192,7 @@ class ArtNetTimecode {
   }
 
   isValidLocalIP(ip) {
-    return (
-      !ip.startsWith("127.") &&
-      !ip.startsWith("169.254.") &&
-      !ip.startsWith("0.")
-    );
-  }
-
-  isPrivateIP(ip) {
-    return (
-      ip.startsWith("192.168.") ||
-      ip.startsWith("10.") ||
-      ip.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)
-    );
+    return !ip.startsWith("127.") && !ip.startsWith("169.254.") && !ip.startsWith("0.");
   }
 
   timeToSMPTE(currentTime) {
@@ -285,23 +246,19 @@ class ArtNetTimecode {
   sendTimecode(currentTime) {
     if (!this.enabled || !this.isConnected) return;
 
-    try {
-      const timecode = this.timeToSMPTE(currentTime);
-      const packet = this.createArtNetPacket(timecode);
+    const timecode = this.timeToSMPTE(currentTime);
+    const packet = this.createArtNetPacket(timecode);
 
-      this.sendToServer({
-        type: "artnet-timecode",
-        packet: Array.from(packet),
-        timecode: timecode,
-        ip: this.ip,
-        port: this.port,
-      });
+    this.sendToServer({
+      type: "artnet-timecode",
+      packet: Array.from(packet),
+      timecode: timecode,
+      ip: this.ip,
+      port: this.port,
+    });
 
-      this.updateStatusDisplay(timecode.formatted);
-      return timecode;
-    } catch (error) {
-      return null;
-    }
+    this.updateStatusDisplay(timecode.formatted);
+    return timecode;
   }
 
   sendToServer(data) {
@@ -315,38 +272,38 @@ class ArtNetTimecode {
   }
 
   connectWebSocket() {
-    try {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}`;
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${wsProtocol}//${window.location.host}`;
 
-      this.ws = new WebSocket(wsUrl);
+    this.ws = new WebSocket(wsUrl);
 
-      this.ws.onopen = () => {
-        this.isConnected = true;
-        this.updateStatusDisplay();
-        if (this.pendingConfiguration) {
-          this.sendConfigurationToServer();
-          this.pendingConfiguration = false;
-        }
-      };
+    this.ws.onopen = () => {
+      this.isConnected = true;
+      this.updateStatusDisplay();
+      if (this.pendingConfiguration) {
+        this.sendConfigurationToServer();
+        this.pendingConfiguration = false;
+      }
+    };
 
-      this.ws.onmessage = (event) => {
-        try {
-          this.handleServerMessage(JSON.parse(event.data));
-        } catch (error) {}
-      };
+    this.ws.onmessage = (event) => {
+      try {
+        this.handleServerMessage(JSON.parse(event.data));
+      } catch (error) {
+        console.warn("Failed to parse WebSocket message:", error);
+      }
+    };
 
-      this.ws.onclose = () => {
-        this.isConnected = false;
-        this.updateStatusDisplay();
-        setTimeout(() => this.connectWebSocket(), 2000);
-      };
+    this.ws.onclose = () => {
+      this.isConnected = false;
+      this.updateStatusDisplay();
+      setTimeout(() => this.connectWebSocket(), 2000);
+    };
 
-      this.ws.onerror = () => {
-        this.isConnected = false;
-        this.updateStatusDisplay();
-      };
-    } catch (error) {}
+    this.ws.onerror = () => {
+      this.isConnected = false;
+      this.updateStatusDisplay();
+    };
   }
 
   handleServerMessage(message) {
@@ -358,36 +315,29 @@ class ArtNetTimecode {
   }
 
   initializeIPPresets() {
-    const presetSelect = this.getElement("artnet-ip-preset");
-    const ipInput = this.getElement("artnet-ip");
+    if (!this.elements.preset || !this.elements.ip) return;
 
-    if (!presetSelect || !ipInput) return;
-
-    const currentIP = ipInput.value;
-    const isPresetIP = Array.from(presetSelect.options).some((option) => {
-      if (option.value === currentIP) {
-        presetSelect.value = currentIP;
-        return true;
-      }
-      return false;
-    });
+    const currentIP = this.elements.ip.value;
+    const isPresetIP = Array.from(this.elements.preset.options)
+      .some(option => option.value === currentIP);
 
     if (isPresetIP) {
-      ipInput.style.display = "none";
+      this.elements.preset.value = currentIP;
+      this.elements.ip.style.display = "none";
     } else {
-      presetSelect.value = "custom";
-      ipInput.style.display = "block";
+      this.elements.preset.value = "custom";
+      this.elements.ip.style.display = "block";
     }
 
-    presetSelect.addEventListener("change", () => {
-      const selectedValue = presetSelect.value;
+    this.elements.preset.addEventListener("change", () => {
+      const selectedValue = this.elements.preset.value;
       if (selectedValue !== "custom") {
-        ipInput.value = selectedValue;
-        ipInput.style.display = "none";
+        this.elements.ip.value = selectedValue;
+        this.elements.ip.style.display = "none";
       } else {
-        ipInput.style.display = "block";
-        ipInput.value = "";
-        ipInput.focus();
+        this.elements.ip.style.display = "block";
+        this.elements.ip.value = "";
+        this.elements.ip.focus();
       }
     });
   }

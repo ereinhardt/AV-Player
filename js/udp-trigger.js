@@ -1,167 +1,134 @@
 class UDPTrigger {
   constructor() {
     this.enabled = false;
-    this.ip = "127.0.0.1"; // Default to localhost
+    this.ip = "127.0.0.1";
     this.port = 9998;
     this.message = "START";
     this.ws = null;
-    this.hasError = false;
+    this.isConnected = false;
+    
+    // Cache DOM elements
+    this.elements = {
+      enabled: document.getElementById("udp-trigger-enabled"),
+      ipPreset: document.getElementById("udp-trigger-ip-preset"),
+      ip: document.getElementById("udp-trigger-ip"),
+      port: document.getElementById("udp-trigger-port"),
+      message: document.getElementById("udp-trigger-message"),
+      apply: document.getElementById("udp-trigger-apply"),
+      status: document.getElementById("udp-trigger-status")
+    };
+    
     this.setupUI();
     this.connectToServer();
   }
 
-  async setupUI() {
-    // Get UI elements
-    this.enabledCheckbox = document.getElementById("udp-trigger-enabled");
-    this.ipPresetSelect = document.getElementById("udp-trigger-ip-preset");
-    this.ipInput = document.getElementById("udp-trigger-ip");
-    this.portInput = document.getElementById("udp-trigger-port");
-    this.messageInput = document.getElementById("udp-trigger-message");
-    this.applyButton = document.getElementById("udp-trigger-apply");
-    this.statusDisplay = document.getElementById("udp-trigger-status");
-
+  setupUI() {
     // Set initial values
-    if (this.enabledCheckbox) this.enabledCheckbox.checked = this.enabled;
-    if (this.ipInput) this.ipInput.value = this.ip;
-    if (this.portInput) this.portInput.value = this.port;
-    if (this.messageInput) this.messageInput.value = this.message;
-
-    // Set initial preset selection to localhost
-    if (this.ipPresetSelect) {
-      this.ipPresetSelect.value = "127.0.0.1";
-    }
+    if (this.elements.enabled) this.elements.enabled.checked = this.enabled;
+    if (this.elements.ip) this.elements.ip.value = this.ip;
+    if (this.elements.port) this.elements.port.value = this.port;
+    if (this.elements.message) this.elements.message.value = this.message;
+    if (this.elements.ipPreset) this.elements.ipPreset.value = "127.0.0.1";
 
     // Add event listeners
-    if (this.applyButton) {
-      this.applyButton.addEventListener("click", () => this.applySettings());
+    if (this.elements.apply) {
+      this.elements.apply.addEventListener("click", () => this.applySettings());
     }
-
-    // Add event listener for enable checkbox to update status immediately
-    if (this.enabledCheckbox) {
-      this.enabledCheckbox.addEventListener("change", () => {
-        this.enabled = this.enabledCheckbox.checked;
-        this.hasError = false; // Clear error state when toggling
-        this.updateStatus(
-          `(${this.ip}:${this.port} / ${this.message})`,
-          this.enabled ? "enabled" : "disabled"
-        );
+    if (this.elements.enabled) {
+      this.elements.enabled.addEventListener("change", () => {
+        this.enabled = this.elements.enabled.checked;
+        this.updateStatus();
       });
     }
 
-    // Set initial status
-    this.updateStatus(
-      `(${this.ip}:${this.port} / ${this.message})`,
-      this.enabled ? "enabled" : "disabled"
-    );
+    this.updateStatus();
   }
 
-  // Simplified method to get broadcast IP
   getBroadcastIP(localIP = "192.168.1.1") {
     const parts = localIP.split(".");
-    if (parts.length === 4) {
-      // Assume /24 subnet
-      return `${parts[0]}.${parts[1]}.${parts[2]}.255`;
-    }
-    return "192.168.1.255"; // Default fallback
+    return parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.255` : "192.168.1.255";
   }
 
   connectToServer() {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      return;
-    }
+    if (this.ws?.readyState === WebSocket.OPEN) return;
 
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${wsProtocol}//${window.location.host}`;
-
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
-      this.hasError = false;
-      this.updateStatus(
-        `(${this.ip}:${this.port} / ${this.message})`,
-        this.enabled ? "enabled" : "disabled"
-      );
+      this.isConnected = true;
+      this.updateStatus();
     };
 
     this.ws.onclose = () => {
-      this.hasError = true;
-      this.updateStatus(`(${this.ip}:${this.port} / ${this.message})`, "error");
+      this.isConnected = false;
+      this.updateStatus();
       setTimeout(() => this.connectToServer(), 3000);
     };
 
     this.ws.onerror = () => {
-      this.hasError = true;
-      this.updateStatus(`(${this.ip}:${this.port} / ${this.message})`, "error");
+      this.isConnected = false;
+      this.updateStatus();
     };
 
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === "udp-trigger-config-updated") {
-          this.hasError = false;
-          this.updateStatus(
-            `(${this.ip}:${this.port} / ${this.message})`,
-            this.enabled ? "enabled" : "disabled"
-          );
-        } else if (data.type === "udp-trigger-sent") {
-          this.hasError = false;
-          // Temporarily show SENT status
-          this.statusDisplay.textContent = `(${data.details.ip}:${data.details.port} / ${data.details.message} - SENT)`;
-          this.statusDisplay.className = `udp-trigger-status enabled`;
-          // Reset to ready status after 2 seconds
-          setTimeout(() => {
-            this.updateStatus(
-              `(${this.ip}:${this.port} / ${this.message})`,
-              "enabled"
-            );
-          }, 2000);
-        } else if (data.type === "udp-trigger-error") {
-          this.hasError = true;
-          this.updateStatus(
-            `(${this.ip}:${this.port} / ${this.message})`,
-            "error"
-          );
-        }
+        this.handleServerMessage(data);
       } catch (e) {
         // Ignore malformed messages
       }
     };
   }
 
-  async applySettings() {
-    if (
-      !this.enabledCheckbox ||
-      !this.ipInput ||
-      !this.portInput ||
-      !this.messageInput
-    ) {
+  handleServerMessage(data) {
+    switch (data.type) {
+      case "udp-trigger-config-updated":
+        this.updateStatus();
+        break;
+      case "udp-trigger-sent":
+        this.showSentStatus(data.details);
+        break;
+      case "udp-trigger-error":
+        this.updateStatus();
+        break;
+    }
+  }
+
+  showSentStatus(details) {
+    if (!this.elements.status) return;
+    
+    this.elements.status.textContent = `(${details.ip}:${details.port} / ${details.message} - SENT)`;
+    this.elements.status.className = "udp-trigger-status enabled";
+    
+    setTimeout(() => this.updateStatus(), 2000);
+  }
+
+  applySettings() {
+    if (!this.elements.enabled || !this.elements.ip || !this.elements.port || !this.elements.message) {
       return;
     }
 
-    this.enabled = this.enabledCheckbox.checked;
+    this.enabled = this.elements.enabled.checked;
 
     // Get IP from appropriate source
-    if (this.ipPresetSelect && this.ipPresetSelect.value === "auto-broadcast") {
-      // Use the IP that was already detected and stored in the input field by ip-config.js
-      this.ip = this.ipInput.value.trim() || this.getBroadcastIP();
-    } else if (this.ipPresetSelect && this.ipPresetSelect.value !== "custom") {
-      // Use the preset value directly (including broadcast IPs like 192.168.178.255)
-      this.ip = this.ipPresetSelect.value;
+    if (this.elements.ipPreset?.value === "auto-broadcast") {
+      this.ip = this.elements.ip.value.trim() || this.getBroadcastIP();
+    } else if (this.elements.ipPreset?.value && this.elements.ipPreset.value !== "custom") {
+      this.ip = this.elements.ipPreset.value;
     } else {
-      this.ip = this.ipInput.value.trim();
+      this.ip = this.elements.ip.value.trim();
     }
 
-    this.port = parseInt(this.portInput.value);
-    this.message = this.messageInput.value.trim();
+    this.port = parseInt(this.elements.port.value);
+    this.message = this.elements.message.value.trim();
 
     // Update the input field to show the resolved IP
-    if (this.ipInput) {
-      this.ipInput.value = this.ip;
-    }
+    this.elements.ip.value = this.ip;
 
     // Validate and apply settings
     if (this.validateSettings()) {
-      this.hasError = false;
       this.sendConfigToServer();
     }
   }
@@ -170,25 +137,22 @@ class UDPTrigger {
     if (!this.enabled) return true;
 
     if (!this.ip || !this.isValidIP(this.ip)) {
-      this.hasError = true;
-      this.updateStatus(`(${this.ip}:${this.port} / ${this.message})`, "error");
+      this.updateStatus();
       return false;
     }
     if (!this.port || this.port < 1 || this.port > 65535) {
-      this.hasError = true;
-      this.updateStatus(`(${this.ip}:${this.port} / ${this.message})`, "error");
+      this.updateStatus();
       return false;
     }
     if (!this.message) {
-      this.hasError = true;
-      this.updateStatus(`(${this.ip}:${this.port} / ${this.message})`, "error");
+      this.updateStatus();
       return false;
     }
     return true;
   }
 
   sendConfigToServer() {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
       const config = {
         type: "udp-trigger-config",
         enabled: this.enabled,
@@ -197,40 +161,36 @@ class UDPTrigger {
         message: this.message,
       };
       this.ws.send(JSON.stringify(config));
-      this.updateStatus(
-        `(${this.ip}:${this.port} / ${this.message})`,
-        this.enabled ? "enabled" : "disabled"
-      );
+      this.updateStatus();
     } else {
-      this.hasError = true;
-      this.updateStatus(`(${this.ip}:${this.port} / ${this.message})`, "error");
+      this.updateStatus();
     }
   }
 
   isValidIP(ip) {
-    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-    if (!ipRegex.test(ip)) return false;
-
     const parts = ip.split(".");
-    return parts.every((part) => {
+    return parts.length === 4 && parts.every(part => {
       const num = parseInt(part);
-      return num >= 0 && num <= 255;
+      return !isNaN(num) && num >= 0 && num <= 255;
     });
   }
 
-  updateStatus(message, status) {
-    if (this.statusDisplay) {
-      // Always show the standard format
-      const standardMessage = `(${this.ip}:${this.port} / ${this.message})`;
-      this.statusDisplay.textContent = standardMessage;
-
-      // Use error styling if hasError is true, otherwise use the provided status
-      const finalStatus = this.hasError ? "error" : status;
-      this.statusDisplay.className = `udp-trigger-status ${finalStatus}`;
+  updateStatus() {
+    if (!this.elements.status) return;
+    
+    let status = "";
+    if (!this.isConnected) {
+      status = "error";
+    } else if (this.enabled) {
+      status = "enabled";
+    } else {
+      status = "disabled";
     }
+
+    this.elements.status.textContent = `(${this.ip}:${this.port} / ${this.message})`;
+    this.elements.status.className = `udp-trigger-status ${status}`;
   }
 
-  // Unified method for sending triggers
   sendTrigger(action = "start") {
     if (!this.enabled || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;
@@ -239,8 +199,7 @@ class UDPTrigger {
     let message = this.message;
     if (action === "stop") {
       message = this.message.replace(/START/gi, "STOP");
-      // Only send if message actually changed
-      if (message === this.message) return;
+      if (message === this.message) return; // Only send if message actually changed
     }
 
     const trigger = {
@@ -254,12 +213,10 @@ class UDPTrigger {
     this.ws.send(JSON.stringify(trigger));
   }
 
-  // Method to be called when playback starts
   triggerStart() {
     this.sendTrigger("start");
   }
 
-  // Method to be called when playback stops
   triggerStop() {
     this.sendTrigger("stop");
   }

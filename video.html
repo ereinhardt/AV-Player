@@ -52,7 +52,7 @@
       }
 
       function isVideoAtEnd() {
-        return video.ended || (video.duration && video.currentTime >= video.duration - 1);
+        return video.ended || (video.duration && video.currentTime >= video.duration - 1); //!IMPORTANT
       }
 
       function sendMessage(type, data = {}) {
