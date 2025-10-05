@@ -1,6 +1,3 @@
-// Art-Net Timecode Sending Module
-// Implements simplified Art-Net protocol for sending SMPTE timecode
-
 class ArtNetTimecode {
     constructor() {
         this.enabled = false;
@@ -8,12 +5,12 @@ class ArtNetTimecode {
         this.port = 6454;
         this.fps = 25;
         this.ws = null;
+        this.isConnected = false;
         this.pendingConfiguration = false;
         this.initializeSettings();
         this.connectWebSocket();
     }
     
-    // Helper functions
     getElement(id) {
         return document.getElementById(id);
     }
@@ -48,7 +45,6 @@ class ArtNetTimecode {
         this.getElement('apply-settings-btn').addEventListener('click', () => this.applySettings());
         this.getElement('artnet-enabled').addEventListener('change', (e) => {
             this.enabled = e.target.checked;
-            this.showStatus(this.enabled ? 'Art-Net enabled' : 'Art-Net disabled', 'success');
             this.updateStatusDisplay();
         });
         
@@ -87,30 +83,17 @@ class ArtNetTimecode {
             const newPort = parseInt(this.getElement('artnet-port').value);
             const newEnabled = this.getElement('artnet-enabled').checked;
 
-            // Validate inputs
-            if (!this.isValidIP(newIp)) {
-                this.showStatus('Invalid IP address', 'error');
-                return;
-            }
-            if (!this.isValidPort(newPort)) {
-                this.showStatus('Invalid port number (1-65535)', 'error');
-                return;
-            }
-            if (!this.isValidFPS(newFps)) {
-                this.showStatus('Invalid FPS value', 'error');
-                return;
-            }
+            if (!this.isValidIP(newIp)) return;
+            if (!this.isValidPort(newPort)) return;
+            if (!this.isValidFPS(newFps)) return;
 
-            // Apply settings
             this.fps = newFps;
             this.ip = newIp;
             this.port = newPort;
             this.enabled = newEnabled;
 
             this.sendConfigurationToServer();
-        } catch (error) {
-            this.showStatus('Error applying settings', 'error');
-        }
+        } catch (error) {}
     }
     
     getIPFromForm() {
@@ -146,7 +129,16 @@ class ArtNetTimecode {
     updateStatusDisplay(currentTimecode = '00:00:00:00') {
         const statusDisplay = document.getElementById('artnet-status-display');
         if (statusDisplay) {
-            const status = this.enabled ? 'connected' : '';
+            let status = '';
+            if (this.enabled && this.isConnected) {
+                status = 'connected';
+            } else if (!this.isConnected) {
+                // Show error (red) whenever server is disconnected, regardless of enabled state
+                status = 'error';
+            } else if (this.enabled && !this.isConnected) {
+                status = 'error';
+            }
+            
             const fpsText = `${this.fps}fps`;
             statusDisplay.textContent = `(${this.ip}:${this.port} / ${fpsText} / ${currentTimecode})`;
             statusDisplay.className = `artnet-status ${status}`;
@@ -241,29 +233,24 @@ class ArtNetTimecode {
     createArtNetPacket(timecode) {
         const packet = new Uint8Array(18);
         
-        // Art-Net Header
-        packet[0] = 0x41; // 'A'
-        packet[1] = 0x72; // 'r'
-        packet[2] = 0x74; // 't'
-        packet[3] = 0x2D; // '-'
-        packet[4] = 0x4E; // 'N'
-        packet[5] = 0x65; // 'e'
-        packet[6] = 0x74; // 't'
-        packet[7] = 0x00; // Null terminator
+        packet[0] = 0x41;
+        packet[1] = 0x72;
+        packet[2] = 0x74;
+        packet[3] = 0x2D;
+        packet[4] = 0x4E;
+        packet[5] = 0x65;
+        packet[6] = 0x74;
+        packet[7] = 0x00;
         
-        // OpCode for TimeCode (0x9700 in little endian)
         packet[8] = 0x97;
         packet[9] = 0x00;
         
-        // Protocol version (14)
         packet[10] = 0x00;
         packet[11] = 0x0E;
         
-        // Filler
         packet[12] = 0x00;
         packet[13] = 0x00;
         
-        // Timecode data
         packet[14] = timecode.frames;
         packet[15] = timecode.seconds;
         packet[16] = timecode.minutes;
@@ -273,7 +260,7 @@ class ArtNetTimecode {
     }
 
     sendTimecode(currentTime) {
-        if (!this.enabled) return;
+        if (!this.enabled || !this.isConnected) return;
         
         try {
             const timecode = this.timeToSMPTE(currentTime);
@@ -312,6 +299,8 @@ class ArtNetTimecode {
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
+                this.isConnected = true;
+                this.updateStatusDisplay();
                 if (this.pendingConfiguration) {
                     this.sendConfigurationToServer();
                     this.pendingConfiguration = false;
@@ -321,33 +310,29 @@ class ArtNetTimecode {
             this.ws.onmessage = (event) => {
                 try {
                     this.handleServerMessage(JSON.parse(event.data));
-                } catch (error) {
-                    // Silent error handling
-                }
+                } catch (error) {}
             };
             
             this.ws.onclose = () => {
+                this.isConnected = false;
+                this.updateStatusDisplay();
                 setTimeout(() => this.connectWebSocket(), 2000);
             };
             
             this.ws.onerror = () => {
-                // Silent error handling
+                this.isConnected = false;
+                this.updateStatusDisplay();
             };
             
-        } catch (error) {
-            // Silent error handling
-        }
+        } catch (error) {}
     }
 
     handleServerMessage(message) {
-        const { type, message: msg } = message;
+        const { type } = message;
         
-        if (type === 'config-updated') {
-            this.showStatus(msg, 'success');
-        } else if (type === 'error') {
-            this.showStatus(msg, 'error');
+        if (type === 'artnet-sent') {
+            this.updateStatusDisplay(message.timecode);
         }
-        // Silent handling for status and unknown messages
     }
 
     initializeIPPresets() {
@@ -356,7 +341,6 @@ class ArtNetTimecode {
         
         if (!presetSelect || !ipInput) return;
 
-        // Check if current IP matches a preset
         const currentIP = ipInput.value;
         const isPresetIP = Array.from(presetSelect.options).some(option => {
             if (option.value === currentIP) {
@@ -366,7 +350,6 @@ class ArtNetTimecode {
             return false;
         });
         
-        // Show/hide input field based on preset selection
         if (isPresetIP) {
             ipInput.style.display = 'none';
         } else {
@@ -374,7 +357,6 @@ class ArtNetTimecode {
             ipInput.style.display = 'block';
         }
         
-        // Handle preset changes
         presetSelect.addEventListener('change', () => {
             const selectedValue = presetSelect.value;
             if (selectedValue !== 'custom') {
@@ -390,14 +372,12 @@ class ArtNetTimecode {
 
 }
 
-// Initialize Art-Net when module loads
 window.artNetTimecode = null;
 
 function initializeArtNet() {
     window.artNetTimecode = new ArtNetTimecode();
 }
 
-// Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { ArtNetTimecode, initializeArtNet };
 }

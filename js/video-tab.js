@@ -1,10 +1,9 @@
-// --- Video Tab Management ---
-let videoWindows = {}; // Object to store multiple video windows by track index
+// Video Tab Management
+let videoWindows = {};
 
-// Global video states to share with playback.js
+// Global video states
 window.videoStates = window.videoStates || {};
 
-// Helper functions
 function isWindowValid(trackIndex) {
     return videoWindows[trackIndex] && !videoWindows[trackIndex].closed;
 }
@@ -20,7 +19,6 @@ function postToVideoWindow(trackIndex, message) {
 function shouldSkipVideoAction(trackIndex) {
     if (window._isVideoSyncing) return true;
     
-    // Check if video has ended (unless reset or loop restart)
     if (!window.isVideoReset && !window.isLoopRestarting) {
         const videoState = window.videoStates?.[trackIndex];
         return videoState?.hasEnded;
@@ -104,31 +102,16 @@ function loadVideoIntoWindow(videoFile, videoAudio, trackIndex) {
                 syncVideoWithAudio(videoAudio, trackIndex);
             }
         } catch (error) {
-            // Retry after a short delay
-            setTimeout(() => {
-                if (isWindowValid(trackIndex)) {
-                    sendVideoData();
-                }
-            }, 1000);
+            setTimeout(() => sendVideoData(), 1000);
         }
     };
 
-    // Simple window ready check
-    const checkWindowReady = () => {
+    // Wait for window to be ready, then send data
+    setTimeout(() => {
         if (isWindowValid(trackIndex)) {
-            try {
-                if (videoWindow.document?.getElementById('video-player')) {
-                    sendVideoData();
-                    return;
-                }
-            } catch (e) {
-                // Window not ready yet
-            }
+            sendVideoData();
         }
-        setTimeout(checkWindowReady, 250);
-    };
-    
-    setTimeout(checkWindowReady, 100);
+    }, 500);
 }
 
 function syncVideoWithAudio(audio, trackIndex) {
@@ -141,12 +124,9 @@ function syncVideoWithAudio(audio, trackIndex) {
         if (audio.paused) {
             postToVideoWindow(trackIndex, { type: 'PAUSE' });
         } else {
-            // During loop restart or after reset, always send PLAY but ensure video is reset first
+            // During loop restart or after reset, send restart command
             if (window.isLoopRestarting || window.isVideoReset) {
-                console.log(`Sending PLAY to video ${trackIndex} (loop restart or reset) - audio time:`, audio.currentTime);
-                
                 if (audio.currentTime < 0.1) {
-                    console.log(`Audio is at beginning, sending RESTART_VIDEO to ensure video resets`);
                     postToVideoWindow(trackIndex, { type: 'RESTART_VIDEO' });
                 } else {
                     postToVideoWindow(trackIndex, { type: 'PLAY' });
@@ -154,34 +134,18 @@ function syncVideoWithAudio(audio, trackIndex) {
                 return;
             }
             
-            // Check if the audio element itself has ended
+            // Check if audio has ended
             if (audio?.tagName === 'VIDEO' && (audio.ended || audio.currentTime >= audio.duration - 0.1)) {
-                console.log(`Not sending PLAY to video ${trackIndex} - audio element has ended`);
                 return;
             }
             
-            // Check if this video is known to have ended
+            // Check if video has ended
             const videoState = window.videoStates?.[trackIndex];
             if (videoState?.hasEnded) {
-                console.log(`Not sending PLAY to video ${trackIndex} - it has ended`);
                 return;
             }
             
-            // Query video status first, then send play if appropriate
-            postToVideoWindow(trackIndex, { type: 'GET_VIDEO_STATUS' });
-            
-            setTimeout(() => {
-                // Re-check status after delay
-                const videoState = window.videoStates?.[trackIndex];
-                if (videoState?.hasEnded || 
-                    (audio?.tagName === 'VIDEO' && (audio.ended || audio.currentTime >= audio.duration - 0.1))) {
-                    console.log(`Not sending PLAY to video ${trackIndex} - still ended after delay`);
-                    return;
-                }
-                
-                console.log(`Sending PLAY to video ${trackIndex}`);
-                postToVideoWindow(trackIndex, { type: 'PLAY' });
-            }, 50);
+            postToVideoWindow(trackIndex, { type: 'PLAY' });
         }
     };
 
@@ -197,7 +161,7 @@ function syncVideoWithAudio(audio, trackIndex) {
     const syncTime = () => {
         if (shouldSkipVideoAction(trackIndex) || syncPaused) return;
         
-        // Don't sync time for ended videos (unless reset or loop restart)
+        // Don't sync time for ended videos
         if (!window.isVideoReset && !window.isLoopRestarting) {
             if (window.videoStates?.[trackIndex]?.hasEnded || 
                 (audio?.tagName === 'VIDEO' && (audio.ended || audio.currentTime >= audio.duration - 0.1))) {
@@ -205,20 +169,19 @@ function syncVideoWithAudio(audio, trackIndex) {
             }
         }
         
-        const now = Date.now();
         const currentAudioTime = audio.currentTime;
         const timeDiff = Math.abs(currentAudioTime - lastAudioTime);
-        const timeSinceLastSync = now - lastSyncTime;
+        const timeSinceLastSync = Date.now() - lastSyncTime;
         
-        // Don't sync during loop operations (when time jumps back to 0)
+        // Skip sync during loop operations (time jumps back to 0)
         if (currentAudioTime < 1.0 && lastAudioTime > 10.0) {
             lastAudioTime = currentAudioTime;
             return;
         }
         
-        // Only sync on major jumps or significant drift
+        // Sync on major jumps or significant drift
         if (timeDiff > 1.0 || (timeSinceLastSync > 5000 && timeDiff > 0.3)) {
-            lastSyncTime = now;
+            lastSyncTime = Date.now();
             postToVideoWindow(trackIndex, {
                 type: 'SEEK',
                 data: { time: currentAudioTime }
@@ -318,20 +281,18 @@ function setupVideoTrackHandling() {
             if (!isWindowValid(trackDataIndex)) {
                 createVideoWindow(trackDataIndex);
                 
-                // Try to load video if we have pending data for this track
+                // Load video if we have pending data
                 if (window[`_pendingVideoFile_${trackDataIndex}`]) {
-                    setTimeout(() => {
-                        loadVideoIntoWindow(
-                            window[`_pendingVideoFile_${trackDataIndex}`], 
-                            window[`_pendingVideoAudio_${trackDataIndex}`],
-                            trackDataIndex
-                        );
-                    }, 1500);
+                    loadVideoIntoWindow(
+                        window[`_pendingVideoFile_${trackDataIndex}`], 
+                        window[`_pendingVideoAudio_${trackDataIndex}`],
+                        trackDataIndex
+                    );
                 }
             } else {
                 videoWindows[trackDataIndex].focus();
                 
-                // Try to reload video if window exists but no video is loaded
+                // Reload video if window exists but no video is loaded
                 if (window[`_pendingVideoFile_${trackDataIndex}`]) {
                     loadVideoIntoWindow(
                         window[`_pendingVideoFile_${trackDataIndex}`], 

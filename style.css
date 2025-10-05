@@ -1,25 +1,36 @@
+/* CSS Variables für einheitliche Spacing-Werte */
+:root {
+    --padding-container: 1rem;      /* Hauptcontainer */
+    --padding-small: 0.25rem;       /* Kleine interne Elemente */
+    --padding-reset: 0;              /* Reset für spezielle Bereiche */
+    
+    --margin-standard: 1rem;        /* Standard-Abstände */
+    --margin-small: 0.5rem;         /* Kleine Abstände */
+    --margin-reset: 0;              /* Margin-Reset */
+}
+
 .controls {
     border: 1px solid silver;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
+    padding: var(--padding-container);
+    margin-bottom: var(--margin-standard);
 }
 
 .controls-title {
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--margin-small);
     font-weight: bold;
 }
 
 .control-group {
-    margin-bottom: 1rem;
+    margin-bottom: var(--margin-standard);
 }
 
 .control-group label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--margin-small);
 }
 
 .master-controls {
-    margin-top: 0;
+    margin-top: var(--margin-reset);
 }
 
 #track-list {
@@ -30,58 +41,53 @@
 
 .track {
     border: 1px solid silver;
-    padding: 1rem;
+    padding: var(--padding-container);
 }
 
-.artnet-settings {
-    border: 1px solid silver;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-}
-
+/* Gemeinsame Settings-Container */
+.artnet-settings,
 .udp-trigger-settings {
     border: 1px solid silver;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
+    padding: var(--padding-container);
+    margin-bottom: var(--margin-standard);
 }
 
-.artnet-title {
-    margin-bottom: 0.75rem;
-    font-weight: bold;
-}
-
+/* Gemeinsame Titel-Styles */
+.artnet-title,
 .udp-trigger-title {
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--margin-small);
     font-weight: bold;
 }
 
 /* IP field styling */
-#artnet-ip, #udp-trigger-ip {
+#artnet-ip, 
+#udp-trigger-ip {
     display: none;
-    margin-left: 10px;
+    margin-left: var(--margin-small);
     width: 150px;
 }
 
-#artnet-ip-preset, #udp-trigger-ip-preset {
+#artnet-ip-preset, 
+#udp-trigger-ip-preset {
     min-width: 200px;
 }
 
 .setting-group {
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--margin-small);
 }
 
 .setting-group:last-child {
-    margin-bottom: 0;
+    margin-bottom: var(--margin-reset);
 }
 
 .track-info {
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--margin-small);
 }
 
 .track-info label {
     font-weight: bold;
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--margin-small);
 }
 
 .track-file-controls {
@@ -94,11 +100,6 @@
     display: none;
 }
 
-#artnet-ip {
-    margin-top: 5px;
-    display: none;
-}
-
 .video-window-btn {
     display: none;
 }
@@ -106,20 +107,6 @@
 .video-track-controls {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-}
-
-.video-device-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0;
-    margin-bottom: 0.5rem;
-}
-
-.video-control-row {
-    display: flex;
-    align-items: center;
     gap: 0.5rem;
 }
 
@@ -143,8 +130,9 @@
     flex-grow: 1;
 }
 
+/* Track Controls - gemeinsame Basis */
 .track-controls {
-    margin-top: 0.5rem;
+    margin-top: var(--margin-small);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -152,22 +140,23 @@
 
 /* Audio track controls - vertical layout */
 .track:not(.video-track) .track-controls {
-    display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
 }
 
-.audio-device-row {
+/* Device und Control Rows */
+.audio-device-row,
+.audio-control-row,
+.video-device-row,
+.video-control-row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.audio-control-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.video-device-row {
+    padding: var(--padding-small) 0;
+    margin-bottom: var(--margin-small);
 }
 
 .volume-control {
@@ -178,8 +167,8 @@
 
 /* Video Window Styles */
 .video-window-body {
-    margin: 0;
-    padding: 0;
+    margin: var(--margin-reset);
+    padding: var(--padding-reset);
     background: #000;
     display: flex;
     align-items: center;
@@ -195,41 +184,26 @@
     height: auto;
 }
 
-/* Art-Net Status Display */
-.artnet-status {
-    color: black;
-    font-weight: normal;
-    margin-left: 0.5rem;
-}
-
-.ip-info {
-    margin-left: 0.5rem;
-}
-
+/* Status Display - gemeinsame Basis */
+.artnet-status,
 .udp-trigger-status {
-    color: #000;  /* Standard: schwarz */
+    color: #000;
     font-weight: normal;
-    margin-left: 0.5rem;
+    margin-left: var(--margin-small);
 }
 
+/* Status-Zustände */
+.artnet-status.connected,
 .udp-trigger-status.enabled {
-    color: #00ff00;  /* Aktiviert: grün */
+    color: #00ff00;
     font-weight: 500;
 }
 
-.udp-trigger-status.disabled {
-    color: #000;  /* Deaktiviert: schwarz */
-}
-
+.artnet-status.error,
 .udp-trigger-status.error {
     color: #ff0000;
 }
 
-.artnet-status.connected {
-    color: #00ff00;
+.ip-info {
+    margin-left: var(--margin-small);
 }
-
-.artnet-status.error {
-    color: #ff0000;
-}
-

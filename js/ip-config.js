@@ -60,8 +60,6 @@ function calculateBroadcastIP(localIP) {
     return parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.255` : '192.168.1.255';
 }
 
-
-
 async function initializeIPConfiguration() {
     const broadcastIP = await getCurrentNetworkBroadcast();
     

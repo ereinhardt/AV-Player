@@ -57,7 +57,7 @@ function setupVolumeControls(tracks, audioSources) {
                 setupVolumeControl(index, volumeSlider, volumeDbDisplay, muteCheckbox, side);
             });
         } else {
-            // Handle regular tracks
+            // Handle regular audio tracks
             const volumeSlider = track.querySelector(`#volume-slider-${index}`);
             const volumeDbDisplay = track.querySelector(`#volume-db-${index}`);
             const muteCheckbox = track.querySelector(`#mute-checkbox-${index}`);

@@ -221,11 +221,7 @@ async function recreateAudioContextWithDevice(trackIndex, deviceId, audioElement
         // If there's an audio element, reconnect it to the new context
         const audio = audioElements[trackIndex];
         if (audio && !audio.paused) {
-            if (typeof window.recreateAudioConnection === 'function') {
-                setTimeout(() => {
-                    window.recreateAudioConnection(trackIndex, audioElements, window.audioSources, audioContextContainer);
-                }, 100);
-            }
+            // Audio will be reconnected automatically when playback resumes
         }
         
         return true;

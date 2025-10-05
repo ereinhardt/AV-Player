@@ -25,7 +25,6 @@ class IntegratedArtNetServer {
         this.setupStaticFileServer();
         this.setupWebSocketServer();
         this.setupUDPSockets();
-        this.setupRoutes();
     }
     
     setupStaticFileServer() {
@@ -33,10 +32,6 @@ class IntegratedArtNetServer {
         this.app.get('/', (req, res) => {
             res.sendFile(path.join(__dirname, 'index.html'));
         });
-    }
-    
-    setupRoutes() {
-        // All communication via WebSocket
     }
     
     setupWebSocketServer() {
@@ -64,10 +59,7 @@ class IntegratedArtNetServer {
     
     setupUDPSockets() {
         this.udpSocket = dgram.createSocket('udp4');
-        this.udpSocket.on('error', () => {});
-        
         this.udpTriggerSocket = dgram.createSocket('udp4');
-        this.udpTriggerSocket.on('error', () => {});
         
         this.udpTriggerSocket.bind(() => {
             this.udpTriggerSocket.setBroadcast(true);
@@ -94,13 +86,8 @@ class IntegratedArtNetServer {
     updateArtNetConfiguration(data, ws) {
         const { ip, port } = data;
         
-        if (ip && ip.trim().length > 0) {
-            this.artNetSendIP = ip.trim();
-        }
-        
-        if (port && !isNaN(port) && port >= 1 && port <= 65535) {
-            this.artNetSendPort = port;
-        }
+        if (ip?.trim()) this.artNetSendIP = ip.trim();
+        if (port && port >= 1 && port <= 65535) this.artNetSendPort = port;
         
         ws.send(JSON.stringify({
             type: 'config-updated',
@@ -115,10 +102,15 @@ class IntegratedArtNetServer {
         
         this.udpSocket.send(buffer, this.artNetSendPort, this.artNetSendIP, (error) => {
             if (error) {
-                senderWs.send(JSON.stringify({
-                    type: 'error',
-                    message: `Failed to send Art-Net: ${error.message}`
-                }));
+                // For broadcast IPs, some errors are expected and normal
+                const isBroadcast = this.artNetSendIP.endsWith('.255');
+                if (!isBroadcast) {
+                    senderWs.send(JSON.stringify({
+                        type: 'error',
+                        message: `Failed to send Art-Net: ${error.message}`
+                    }));
+                }
+                // For broadcast IPs, silently ignore common errors
             } else {
                 senderWs.send(JSON.stringify({
                     type: 'artnet-sent',
@@ -132,21 +124,10 @@ class IntegratedArtNetServer {
     updateUDPTriggerConfiguration(data, ws) {
         const { enabled, ip, port, message } = data;
         
-        if (typeof enabled === 'boolean') {
-            this.udpTriggerEnabled = enabled;
-        }
-        
-        if (ip && ip.trim().length > 0) {
-            this.udpTriggerIP = ip.trim();
-        }
-        
-        if (port && !isNaN(port) && port >= 1 && port <= 65535) {
-            this.udpTriggerPort = port;
-        }
-        
-        if (message && message.trim().length > 0) {
-            this.udpTriggerMessage = message.trim();
-        }
+        if (typeof enabled === 'boolean') this.udpTriggerEnabled = enabled;
+        if (ip?.trim()) this.udpTriggerIP = ip.trim();
+        if (port && port >= 1 && port <= 65535) this.udpTriggerPort = port;
+        if (message?.trim()) this.udpTriggerMessage = message.trim();
         
         ws.send(JSON.stringify({
             type: 'udp-trigger-config-updated',
@@ -220,10 +201,7 @@ class IntegratedArtNetServer {
 
 process.on('SIGINT', () => process.exit(0));
 process.on('SIGTERM', () => process.exit(0));
-process.on('uncaughtException', () => {});
-process.on('unhandledRejection', () => {});
 
-// Start server if this file is run directly
 if (require.main === module) {
     const server = new IntegratedArtNetServer();
     server.start();

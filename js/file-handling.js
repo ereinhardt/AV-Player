@@ -86,7 +86,7 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
             
             // Reset timeline UI
             timelineProgress.value = 0;
-            timeDisplay.textContent = '00:00 / 00:00';
+            timeDisplay.textContent = '00:00:00 / 00:00:00';
             fileNameSpan.textContent = file.name;
 
             let audio;

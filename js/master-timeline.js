@@ -30,7 +30,7 @@ function setupMasterTimeline(audioElements) {
                 }
             }
         } else {
-            masterTimeDisplay.textContent = '00:00 / 00:00';
+            masterTimeDisplay.textContent = '00:00:00 / 00:00:00';
             masterTimelineProgress.value = 0;
         }
     }
@@ -41,5 +41,3 @@ function setupMasterTimeline(audioElements) {
     // Also update when files are loaded
     document.addEventListener('fileLoaded', updateMasterTimeline);
 }
-
-
