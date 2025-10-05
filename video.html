@@ -1,286 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Video Player</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: black;
-            overflow: hidden;
-        }
-        
-        #video-player {
-            width: 100vw;
-            height: 100vh;
-            object-fit: contain;
-            background: black;
-            display: block;
-        }
-        
-        #video-player::-webkit-media-controls,
-        #video-player::-moz-media-controls,
-        #video-player::-ms-media-controls {
-            display: none !important;
-        }
-        
-        #black-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: black;
-            z-index: 9999;
-            display: none;
-        }
+      body {
+        margin: 0;
+        padding: 0;
+        background: black;
+        overflow: hidden;
+      }
+
+      #video-player {
+        width: 100vw;
+        height: 100vh;
+        object-fit: contain;
+        background: black;
+      }
+
+      #video-player::-webkit-media-controls {
+        display: none !important;
+      }
+
+      #black-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: black;
+        z-index: 9999;
+        display: none;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <video id="video-player" muted></video>
     <div id="black-overlay"></div>
 
     <script>
-        let isReceivingSeek = false;
-        let videoHasEnded = false;
-        let isLoopRestarting = false;
-        
-        const video = document.getElementById('video-player');
-        const overlay = document.getElementById('black-overlay');
-        
-        function showOverlay() {
-            overlay.style.display = 'block';
+      let isReceivingSeek = false;
+      let videoHasEnded = false;
+      let isLoopRestarting = false;
+
+      const video = document.getElementById("video-player");
+      const overlay = document.getElementById("black-overlay");
+
+      function setOverlay(show) {
+        overlay.style.display = show ? "block" : "none";
+      }
+
+      function isVideoAtEnd() {
+        return video.ended || (video.duration && video.currentTime >= video.duration - 0.2);
+      }
+
+      function sendMessage(type, data = {}) {
+        if (window.opener) {
+          try {
+            window.opener.postMessage({ type, data }, window.location.origin);
+          } catch (e) {}
         }
-        
-        function hideOverlay() {
-            if (!videoHasEnded && !video.paused && !video.ended) {
-                overlay.style.display = 'none';
-            }
-        }
-        
-        function forceHideOverlay() {
-            overlay.style.display = 'none';
-        }
-        
-        // Message handling
-        window.addEventListener('message', (event) => {
-            if (event.origin !== window.location.origin) return;
-            
-            const { type, data } = event.data;
-            
-            switch (type) {
-                case 'LOAD_VIDEO':
-                    videoHasEnded = false;
-                    isLoopRestarting = false;
-                    video.src = data.url;
-                    video.muted = true;
-                    video.controls = false;
-                    hideOverlay();
-                    break;
-                    
-                case 'PLAY':
-                    // Allow play even for ended videos if it's during a loop restart
-                    if (!videoHasEnded && !video.ended || isLoopRestarting) {
-                        videoHasEnded = false;
-                        hideOverlay();
-                        video.play().catch(e => console.warn('Play failed:', e));
-                    }
-                    break;
-                    
-                case 'PAUSE':
-                    video.pause();
-                    if (videoHasEnded || video.ended || (video.duration && video.currentTime >= video.duration - 0.2)) {
-                        showOverlay();
-                    }
-                    break;
-                    
-                case 'SEEK':
-                    if (data && typeof data.time === 'number' && !videoHasEnded) {
-                        isReceivingSeek = true;
-                        video.currentTime = data.time;
-                        setTimeout(() => { isReceivingSeek = false; }, 100);
-                    }
-                    break;
-                    
-                case 'SET_PLAYBACK_RATE':
-                    if (data && typeof data.rate === 'number') {
-                        video.playbackRate = data.rate;
-                    }
-                    break;
-                    
-                case 'SET_LOOP':
-                    video.loop = false;
-                    break;
-                    
-                case 'GET_VIDEO_STATUS':
-                    if (window.opener) {
-                        try {
-                            window.opener.postMessage({
-                                type: 'VIDEO_STATUS_RESPONSE',
-                                data: {
-                                    hasEnded: videoHasEnded,
-                                    ended: video.ended,
-                                    paused: video.paused,
-                                    currentTime: video.currentTime,
-                                    duration: video.duration,
-                                    isLoopRestarting: isLoopRestarting
-                                }
-                            }, window.location.origin);
-                        } catch (e) {}
-                    }
-                    break;
-                    
-                case 'RESTART_VIDEO':
-                    isLoopRestarting = true;
-                    videoHasEnded = false;
-                    forceHideOverlay();
-                    
-                    video.pause();
-                    
-                    if (video.ended || video.currentTime >= video.duration - 0.1) {
-                        const currentSrc = video.src;
-                        video.src = '';
-                        video.load();
-                        video.src = currentSrc;
-                        video.load();
-                    }
-                    
-                    video.currentTime = 0;
-                    
-                    setTimeout(() => {
-                        video.play().then(() => {
-                            isLoopRestarting = false;
-                            forceHideOverlay();
-                        }).catch(e => {
-                            isLoopRestarting = false;
-                        });
-                    }, 100);
-                    break;
-                    
-                case 'RESET_VIDEO':
-                    isLoopRestarting = false;
-                    videoHasEnded = false;
-                    
-                    video.pause();
-                    
-                    const currentSrc = video.src;
-                    video.src = '';
-                    video.load();
-                    video.src = currentSrc;
-                    video.load();
-                    
-                    video.currentTime = 0;
-                    showOverlay();
-                    break;
-            }
-        });
-        
-        // Essential video events
-        video.addEventListener('play', () => {
+      }
+
+      // Message handling
+      window.addEventListener("message", (event) => {
+        if (event.origin !== window.location.origin) return;
+
+        const { type, data } = event.data;
+
+        switch (type) {
+          case "LOAD_VIDEO":
             videoHasEnded = false;
-            forceHideOverlay();
+            isLoopRestarting = false;
+            video.src = data.url;
+            video.muted = true;
+            video.controls = false;
+            setOverlay(false);
+            break;
+
+          case "PLAY":
+            if ((!videoHasEnded && !video.ended) || isLoopRestarting) {
+              videoHasEnded = false;
+              setOverlay(false);
+              video.play().catch((e) => console.warn("Play failed:", e));
+            }
+            break;
+
+          case "PAUSE":
+            video.pause();
+            if (videoHasEnded || isVideoAtEnd()) {
+              setOverlay(true);
+            }
+            break;
+
+          case "SEEK":
+            if (data?.time !== undefined && !videoHasEnded) {
+              isReceivingSeek = true;
+              video.currentTime = data.time;
+              setTimeout(() => { isReceivingSeek = false; }, 100);
+            }
+            break;
+
+          case "SET_PLAYBACK_RATE":
+            if (data?.rate !== undefined) {
+              video.playbackRate = data.rate;
+            }
+            break;
+
+          case "GET_VIDEO_STATUS":
+            sendMessage("VIDEO_STATUS_RESPONSE", {
+              hasEnded: videoHasEnded,
+              ended: video.ended,
+              paused: video.paused,
+              currentTime: video.currentTime,
+              duration: video.duration,
+              isLoopRestarting: isLoopRestarting
+            });
+            break;
+
+          case "RESTART_VIDEO":
+            isLoopRestarting = true;
+            videoHasEnded = false;
+            setOverlay(false);
+            video.pause();
             
-            if (window.opener && !isReceivingSeek) {
-                try {
-                    window.opener.postMessage({ type: 'VIDEO_PLAY' }, window.location.origin);
-                } catch (e) {}
-            }
-        });
-        
-        video.addEventListener('pause', () => {
-            if (videoHasEnded || video.ended || (video.duration && video.currentTime >= video.duration - 0.2)) {
-                showOverlay();
+            if (isVideoAtEnd()) {
+              const src = video.src;
+              video.src = "";
+              video.load();
+              video.src = src;
+              video.load();
             }
             
-            if (window.opener && !isReceivingSeek) {
-                try {
-                    window.opener.postMessage({ type: 'VIDEO_PAUSE' }, window.location.origin);
-                } catch (e) {}
-            }
-        });
-        
-        video.addEventListener('timeupdate', () => {
-            if (video.duration && video.currentTime >= video.duration - 0.2) {
-                if (!videoHasEnded) {
-                    videoHasEnded = true;
-                    showOverlay();
-                }
-            } else if (!video.paused && video.currentTime > 0.01) {
-                forceHideOverlay();
-            }
-        });
-        
-        video.addEventListener('ended', () => {
-            videoHasEnded = true;
-            showOverlay();
-            
+            video.currentTime = 0;
             setTimeout(() => {
-                if (videoHasEnded) {
-                    video.currentTime = 0;
-                    showOverlay();
-                }
-            }, 150);
+              video.play().then(() => {
+                isLoopRestarting = false;
+                setOverlay(false);
+              }).catch(() => {
+                isLoopRestarting = false;
+              });
+            }, 100);
+            break;
+
+          case "RESET_VIDEO":
+            isLoopRestarting = false;
+            videoHasEnded = false;
+            video.pause();
             
-            if (window.opener) {
-                try {
-                    window.opener.postMessage({ 
-                        type: 'VIDEO_ENDED',
-                        data: { 
-                            hasEnded: true,
-                            duration: video.duration,
-                            currentTime: video.currentTime
-                        }
-                    }, window.location.origin);
-                } catch (e) {}
-            }
-        });
-        
-        video.addEventListener('seeked', () => {
-            if (video.duration && video.currentTime >= video.duration - 0.2) {
-                videoHasEnded = true;
-                showOverlay();
-            }
+            const src = video.src;
+            video.src = "";
+            video.load();
+            video.src = src;
+            video.load();
             
-            if (window.opener && !isReceivingSeek) {
-                try {
-                    window.opener.postMessage({ 
-                        type: 'VIDEO_SEEKED', 
-                        data: { time: video.currentTime } 
-                    }, window.location.origin);
-                } catch (e) {}
-            }
+            video.currentTime = 0;
+            setOverlay(true);
+            break;
+        }
+      });
+
+      // Video events
+      video.addEventListener("play", () => {
+        videoHasEnded = false;
+        setOverlay(false);
+        if (!isReceivingSeek) {
+          sendMessage("VIDEO_PLAY");
+        }
+      });
+
+      video.addEventListener("pause", () => {
+        if (videoHasEnded || isVideoAtEnd()) {
+          setOverlay(true);
+        }
+        if (!isReceivingSeek) {
+          sendMessage("VIDEO_PAUSE");
+        }
+      });
+
+      video.addEventListener("timeupdate", () => {
+        if (isVideoAtEnd()) {
+          if (!videoHasEnded) {
+            videoHasEnded = true;
+            setOverlay(true);
+          }
+        } else if (!video.paused && video.currentTime > 0.01) {
+          setOverlay(false);
+        }
+      });
+
+      video.addEventListener("ended", () => {
+        videoHasEnded = true;
+        setOverlay(true);
+        setTimeout(() => {
+          if (videoHasEnded) {
+            video.currentTime = 0;
+            setOverlay(true);
+          }
+        }, 150);
+        sendMessage("VIDEO_ENDED", {
+          hasEnded: true,
+          duration: video.duration,
+          currentTime: video.currentTime
         });
-        
-        // Add a playing event listener for additional safety
-        video.addEventListener('playing', () => {
-            forceHideOverlay();
-        });
-        
-        // Add loadeddata event to ensure video is ready
-        video.addEventListener('loadeddata', () => {
-            if (!video.paused && video.currentTime > 0) {
-                forceHideOverlay();
-            }
-        });
-        
-        // Prevent interactions
-        video.addEventListener('contextmenu', e => e.preventDefault());
-        video.addEventListener('click', e => e.preventDefault());
-        
-        // Initialize
-        video.controls = false;
-        forceHideOverlay();
-        
-        // Notify parent window
-        window.addEventListener('load', () => {
-            if (window.opener) {
-                try {
-                    window.opener.postMessage({ type: 'VIDEO_WINDOW_READY' }, window.location.origin);
-                } catch (e) {}
-            }
-        });
+      });
+
+      video.addEventListener("seeked", () => {
+        if (isVideoAtEnd()) {
+          videoHasEnded = true;
+          setOverlay(true);
+        }
+        if (!isReceivingSeek) {
+          sendMessage("VIDEO_SEEKED", { time: video.currentTime });
+        }
+      });
+
+      // Prevent interactions
+      video.addEventListener("contextmenu", (e) => e.preventDefault());
+      video.addEventListener("click", (e) => e.preventDefault());
+
+      // Initialize
+      video.controls = false;
+      setOverlay(false);
+
+      // Notify parent window
+      window.addEventListener("load", () => {
+        sendMessage("VIDEO_WINDOW_READY");
+      });
     </script>
-</body>
+  </body>
 </html>
