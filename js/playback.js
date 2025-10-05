@@ -5,8 +5,10 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
   let isPlaying = false;
   let longestAudio = null;
   let isLoopRestarting = false;
+  let audioWaitingStates = {}; // Track which audios are waiting for loop
 
   function resetAllStates() {
+    audioWaitingStates = {};
     if (window.videoStates) window.videoStates = {};
   }
 
@@ -69,6 +71,26 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
       };
       longestAudio.addEventListener("ended", longestAudio._loopHandler);
     }
+
+    // Setup individual audio handlers for waiting states
+    audioElements.forEach((audio, index) => {
+      if (audio && audio !== longestAudio) {
+        // Clean up existing handler
+        if (audio._waitingHandler) {
+          audio.removeEventListener("ended", audio._waitingHandler);
+        }
+
+        // Create new waiting handler
+        audio._waitingHandler = () => {
+          if (loopCheckbox.checked && isPlaying && !isLoopRestarting) {
+            audio.pause();
+            audioWaitingStates[index] = true;
+            console.log(`Audio ${index} finished, waiting for loop restart`);
+          }
+        };
+        audio.addEventListener("ended", audio._waitingHandler);
+      }
+    });
   }
 
   function restartAllElements() {
@@ -137,12 +159,20 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
       playPauseButton.textContent = "Pause";
       playPauseButton.classList.add("playing");
 
-      // Start all audio elements that are ready
+      // Start audio elements, but respect waiting states
       audioElements.forEach((audio, index) => {
-        if (audio && !isVideoAtEnd(audio)) {
-          audio.play().catch((error) => {
-            console.error(`Failed to play audio ${index}:`, error);
-          });
+        if (audio) {
+          // Don't play if audio is waiting for loop or at end
+          const isWaitingForLoop = audioWaitingStates[index];
+          const isAtEnd = isVideoAtEnd(audio);
+          
+          if (!isWaitingForLoop && !isAtEnd) {
+            audio.play().catch((error) => {
+              console.error(`Failed to play audio ${index}:`, error);
+            });
+          } else if (isWaitingForLoop) {
+            console.log(`Audio ${index} staying paused - waiting for loop`);
+          }
         }
       });
 
