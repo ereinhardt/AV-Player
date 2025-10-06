@@ -20,62 +20,58 @@ class VideoManager {
     return window._isVideoSyncing || 
       (!window.isVideoReset && !window.isLoopRestarting && this.states[trackIndex]?.hasEnded);
   }
-}
 
-const videoManager = new VideoManager();
-window.videoStates = videoManager.states;
+  createWindow(trackIndex) {
+    if (this.isValid(trackIndex)) {
+      this.windows[trackIndex].focus();
+      return this.windows[trackIndex];
+    }
 
-const createVideoWindow = (trackIndex) => {
-  if (videoManager.isValid(trackIndex)) {
-    videoManager.windows[trackIndex].focus();
-    return videoManager.windows[trackIndex];
-  }
-
-  const features = "width=800,height=600,scrollbars=no,resizable=yes";
-  
-  try {
-    const videoWindow = window.open("./video.html", `VideoPlayer_${trackIndex}`, features);
+    const videoWindow = window.open("./video.html", `VideoPlayer_${trackIndex}`, 
+      "width=800,height=600,scrollbars=no,resizable=yes");
     
     if (!videoWindow) {
       alert("Video window blocked. Please allow popups.");
       return null;
     }
 
-    videoManager.windows[trackIndex] = videoWindow;
-
-    // Handle window ready message
-    const onReady = (event) => {
-      if (event.origin === window.location.origin && event.data.type === "VIDEO_WINDOW_READY") {
-        const file = window[`_pendingVideoFile_${trackIndex}`];
-        const audio = window[`_pendingVideoAudio_${trackIndex}`];
-        if (file) loadVideoIntoWindow(file, audio, trackIndex);
-      }
-    };
-
-    window.addEventListener("message", onReady);
+    this.windows[trackIndex] = videoWindow;
     return videoWindow;
-  } catch (error) {
-    console.error("Failed to create video window:", error);
-    return null;
   }
-};
+
+  sendToAll(message) {
+    Object.keys(this.windows).forEach(trackIndex => this.send(trackIndex, message));
+  }
+}
+
+const videoManager = new VideoManager();
+window.videoStates = videoManager.states;
+window.videoWindows = videoManager.windows;
 
 const loadVideoIntoWindow = (videoFile, videoAudio, trackIndex) => {
   if (!videoManager.isValid(trackIndex)) {
-    createVideoWindow(trackIndex);
+    const window = videoManager.createWindow(trackIndex);
+    if (!window) return;
+
+    // Setup ready listener for new window
+    const onReady = (event) => {
+      if (event.origin === window.location.origin && event.data.type === "VIDEO_WINDOW_READY") {
+        sendVideoData();
+      }
+    };
+    window.addEventListener("message", onReady);
   }
 
   const sendVideoData = () => {
     try {
       const videoURL = URL.createObjectURL(videoFile);
+      const loopCheckbox = document.getElementById("loop-checkbox");
       
       videoManager.send(trackIndex, {
         type: "LOAD_VIDEO",
         data: { url: videoURL, filename: videoFile.name }
       });
 
-      // Send loop status
-      const loopCheckbox = document.getElementById("loop-checkbox");
       if (loopCheckbox) {
         videoManager.send(trackIndex, {
           type: "SET_LOOP",
@@ -83,7 +79,6 @@ const loadVideoIntoWindow = (videoFile, videoAudio, trackIndex) => {
         });
       }
 
-      // Setup sync
       if (videoAudio) {
         syncVideoWithAudio(videoAudio, trackIndex);
       }
@@ -104,16 +99,17 @@ const syncVideoWithAudio = (audio, trackIndex) => {
   let lastSyncTime = 0;
   let lastAudioTime = 0;
 
+  const shouldSync = () => !videoManager.shouldSkip(trackIndex) && !videoManager.syncPaused;
   const hasEnded = () => !window.isVideoReset && !window.isLoopRestarting && 
     (videoManager.states[trackIndex]?.hasEnded || 
      (audio?.tagName === "VIDEO" && (audio.ended || audio.currentTime >= audio.duration - 0.1)));
 
   const send = (type, data = {}) => videoManager.send(trackIndex, { type, data });
 
-  // Sync functions
-  const syncPlayPause = () => {
-    if (videoManager.shouldSkip(trackIndex)) return;
-
+  // Simplified sync functions
+  const syncPlayback = () => {
+    if (!shouldSync()) return;
+    
     if (audio.paused) {
       send("PAUSE");
     } else if (!hasEnded()) {
@@ -124,7 +120,7 @@ const syncVideoWithAudio = (audio, trackIndex) => {
   };
 
   const syncTime = () => {
-    if (videoManager.shouldSkip(trackIndex) || videoManager.syncPaused || hasEnded()) return;
+    if (!shouldSync() || hasEnded()) return;
 
     const currentTime = audio.currentTime;
     const timeDiff = Math.abs(currentTime - lastAudioTime);
@@ -146,43 +142,47 @@ const syncVideoWithAudio = (audio, trackIndex) => {
   };
 
   const syncSeek = () => {
-    if (videoManager.shouldSkip(trackIndex)) return;
+    if (!shouldSync()) return;
     send("SEEK", { time: audio.currentTime });
     lastAudioTime = audio.currentTime;
     lastSyncTime = Date.now();
   };
 
   const syncRate = () => {
-    if (videoManager.shouldSkip(trackIndex)) return;
+    if (!shouldSync()) return;
     send("SET_PLAYBACK_RATE", { rate: audio.playbackRate });
   };
 
-  // Clean up and setup event listeners
-  if (audio._videoSyncListeners) {
-    audio._videoSyncListeners.forEach(({ event, listener }) => {
-      audio.removeEventListener(event, listener);
-    });
-  }
+  // Setup event listeners
+  const setupListeners = () => {
+    // Clean up existing listeners
+    if (audio._videoSyncListeners) {
+      audio._videoSyncListeners.forEach(({ event, listener }) => {
+        audio.removeEventListener(event, listener);
+      });
+    }
 
-  const listeners = [
-    ["play", syncPlayPause],
-    ["pause", syncPlayPause], 
-    ["timeupdate", syncTime],
-    ["ratechange", syncRate],
-    ["seeked", syncSeek]
-  ];
+    const listeners = [
+      ["play", syncPlayback],
+      ["pause", syncPlayback], 
+      ["timeupdate", syncTime],
+      ["ratechange", syncRate],
+      ["seeked", syncSeek]
+    ];
 
-  listeners.forEach(([event, listener]) => audio.addEventListener(event, listener));
-  audio._videoSyncListeners = listeners.map(([event, listener]) => ({ event, listener }));
+    listeners.forEach(([event, listener]) => audio.addEventListener(event, listener));
+    audio._videoSyncListeners = listeners.map(([event, listener]) => ({ event, listener }));
+  };
 
-  // Initial sync
+  // Initialize
+  setupListeners();
+  
   setTimeout(() => {
-    if (!videoManager.shouldSkip(trackIndex)) {
-      syncPlayPause();
+    if (shouldSync()) {
+      syncPlayback();
       if (audio.currentTime > 1.0) syncSeek();
       syncRate();
 
-      // Set initial loop status
       const loopCheckbox = document.getElementById("loop-checkbox");
       if (loopCheckbox) {
         send("SET_LOOP", { loop: loopCheckbox.checked });
@@ -197,11 +197,9 @@ const syncVideoWithAudio = (audio, trackIndex) => {
 
 // Update video loop status for all windows
 const updateVideoLoopStatus = (isLooping) => {
-  Object.keys(videoManager.windows).forEach((trackIndex) => {
-    videoManager.send(trackIndex, {
-      type: "SET_LOOP",
-      data: { loop: isLooping }
-    });
+  videoManager.sendToAll({
+    type: "SET_LOOP",
+    data: { loop: isLooping }
   });
 };
 
@@ -218,16 +216,13 @@ const setupVideoTrackHandling = () => {
       const audio = window[`_pendingVideoAudio_${trackIndex}`];
 
       if (!videoManager.isValid(trackIndex)) {
-        createVideoWindow(trackIndex);
-        if (file) loadVideoIntoWindow(file, audio, trackIndex);
+        videoManager.createWindow(trackIndex);
       } else {
         videoManager.windows[trackIndex].focus();
-        if (file) loadVideoIntoWindow(file, audio, trackIndex);
       }
+      
+      if (file) loadVideoIntoWindow(file, audio, trackIndex);
     });
   });
 };
 
-// Global exports for backward compatibility
-window.videoStates = videoManager.states;
-window.videoWindows = videoManager.windows;

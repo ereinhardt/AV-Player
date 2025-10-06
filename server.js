@@ -23,10 +23,6 @@ class IntegratedArtNetServer {
     this.udpPort = 9998;
     this.udpMessage = "START";
 
-    this.setupServer();
-  }
-
-  setupServer() {
     // Static files
     this.app.use(express.static(__dirname));
     this.app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
@@ -61,47 +57,28 @@ class IntegratedArtNetServer {
     ws.send(JSON.stringify({ type, message, ...data }));
   }
 
-  updateArtNetConfiguration(data, ws) {
-    const { ip, port } = data;
-
-    if (ip?.trim()) this.artNetSendIP = ip.trim();
-    if (port && port >= 1 && port <= 65535) this.artNetSendPort = port;
-
-    ws.send(
-      JSON.stringify({
-        type: "config-updated",
-        message: `Art-Net target updated to ${this.artNetSendIP}:${this.artNetSendPort}`,
-        config: { ip: this.artNetSendIP, port: this.artNetSendPort },
-      })
-    );
-  }
-
   handleMessage(ws, data) {
-    switch (data.type) {
-      case "artnet-timecode":
-        this.sendArtNet(data, ws);
-        break;
-      case "configure-artnet":
-        this.configureArtNet(data, ws);
-        break;
-      case "udp-trigger-config":
-        this.configureUDP(data, ws);
-        break;
-      case "udp-trigger-send":
-        this.sendUDP(data, ws);
-        break;
+    const handlers = {
+      "artnet-timecode": this.sendArtNet,
+      "configure-artnet": this.configureArtNet,
+      "udp-trigger-config": this.configureUDP,
+      "udp-trigger-send": this.sendUDP
+    };
+    
+    const handler = handlers[data.type];
+    if (handler) {
+      handler.call(this, data, ws);
     }
   }
 
   sendArtNet(data, ws) {
-    const { packet, timecode } = data;
-    const buffer = Buffer.from(packet);
+    const buffer = Buffer.from(data.packet);
 
     this.udpSocket.send(buffer, this.artNetPort, this.artNetIP, (error) => {
       if (error && !this.artNetIP.endsWith(".255")) {
         this.send(ws, "error", `Art-Net send failed: ${error.message}`);
       } else {
-        this.send(ws, "artnet-sent", timecode.formatted, {
+        this.send(ws, "artnet-sent", data.timecode.formatted, {
           target: `${this.artNetIP}:${this.artNetPort}`
         });
       }
@@ -142,21 +119,15 @@ class IntegratedArtNetServer {
       return;
     }
 
-    const { action } = data;
-    let message = action === "stop" ? "STOP" : 
-                 (data.customMessage || this.udpMessage);
-    
-    message = message.replace(/[^\x20-\x7E]/g, "") || "START";
+    const message = data.action === "stop" ? "STOP" : (data.customMessage || this.udpMessage || "START");
     const buffer = Buffer.from(message, "ascii");
 
     this.udpTriggerSocket.send(buffer, this.udpPort, this.udpIP, (error) => {
-      if (error) {
-        this.send(ws, "udp-trigger-error", `UDP send failed: ${error.message}`);
-      } else {
-        this.send(ws, "udp-trigger-sent", `Message "${message}" sent`, {
-          details: { message, ip: this.udpIP, port: this.udpPort, action }
-        });
-      }
+      const messageType = error ? "udp-trigger-error" : "udp-trigger-sent";
+      const messageText = error ? `UDP send failed: ${error.message}` : `Message "${message}" sent`;
+      const extraData = error ? {} : { details: { message, ip: this.udpIP, port: this.udpPort, action: data.action } };
+      
+      this.send(ws, messageType, messageText, extraData);
     });
   }
 

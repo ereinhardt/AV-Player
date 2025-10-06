@@ -1,11 +1,8 @@
-// Audio Device Configuration Constants
+// Audio Device Configuration
 const AUDIO_CONFIG = {
   FALLBACK_CHANNEL_COUNT: 2,
   DEFAULT_CHANNEL: 1,
-  DEFAULT_OPTIONS: `
-    <option value="default">Default Audio Device</option>
-    <option value="">Built-in Speakers</option>
-  `
+  FALLBACK_OPTIONS: `<option value="default">Default Audio Device</option><option value="">Built-in Speakers</option>`
 };
 
 // Audio Device Management
@@ -15,25 +12,18 @@ async function getAudioDevices() {
     
     const devices = await navigator.mediaDevices.enumerateDevices();
     const audioOutputDevices = devices.filter(device => device.kind === "audiooutput");
-    populateDeviceSelectors(audioOutputDevices);
+    
+    document.querySelectorAll(".audio-device-select").forEach(select => {
+      select.innerHTML = audioOutputDevices
+        .map((device, index) => 
+          `<option value="${device.deviceId}">${device.label || `Audio Output ${index + 1}`}</option>`
+        ).join('');
+      select.dispatchEvent(new Event("change"));
+    });
   } catch {
-    populateWithFallbackDevices();
+    document.querySelectorAll(".audio-device-select")
+      .forEach(select => select.innerHTML = AUDIO_CONFIG.FALLBACK_OPTIONS);
   }
-}
-
-function populateDeviceSelectors(audioOutputDevices) {
-  document.querySelectorAll(".audio-device-select").forEach(select => {
-    select.innerHTML = audioOutputDevices
-      .map((device, index) => 
-        `<option value="${device.deviceId}">${device.label || `Audio Output ${index + 1}`}</option>`
-      ).join('');
-    select.dispatchEvent(new Event("change"));
-  });
-}
-
-function populateWithFallbackDevices() {
-  document.querySelectorAll(".audio-device-select")
-    .forEach(select => select.innerHTML = AUDIO_CONFIG.DEFAULT_OPTIONS);
 }
 
 async function updateChannelSelectorsForDevice(track, specificAudioDeviceSelect = null) {
@@ -77,9 +67,7 @@ async function getMaxChannelsForDevice(deviceId) {
   let context;
   try {
     context = new (window.AudioContext || window.webkitAudioContext)();
-    if (deviceId && typeof context.setSinkId === 'function') {
-      await context.setSinkId(deviceId);
-    }
+    if (deviceId && context.setSinkId) await context.setSinkId(deviceId);
     return context.destination.maxChannelCount;
   } catch {
     return AUDIO_CONFIG.FALLBACK_CHANNEL_COUNT;
@@ -122,13 +110,22 @@ async function setTrackAudioDevice(trackIndex, deviceId, audioElements, audioCon
   const context = audioContextContainer?.contexts?.[trackIndex];
   
   // Try setting device on audio element and context
-  const results = await Promise.allSettled([
-    trySetDeviceId(audioElement, deviceId),
-    trySetDeviceId(context, deviceId)
-  ]);
+  let audioDeviceSet = false;
+  let contextDeviceSet = false;
   
-  const audioDeviceSet = results[0].status === 'fulfilled' && results[0].value;
-  const contextDeviceSet = results[1].status === 'fulfilled' && results[1].value;
+  try {
+    if (audioElement?.setSinkId) {
+      await audioElement.setSinkId(deviceId);
+      audioDeviceSet = true;
+    }
+  } catch { /* ignore */ }
+  
+  try {
+    if (context?.setSinkId) {
+      await context.setSinkId(deviceId);
+      contextDeviceSet = true;
+    }
+  } catch { /* ignore */ }
   
   // If both failed, recreate context
   if (!audioDeviceSet && !contextDeviceSet) {
@@ -136,17 +133,6 @@ async function setTrackAudioDevice(trackIndex, deviceId, audioElements, audioCon
   }
   
   return { audioDeviceSet, contextDeviceSet };
-}
-
-async function trySetDeviceId(target, deviceId) {
-  if (!target || typeof target.setSinkId !== "function") return false;
-  
-  try {
-    await target.setSinkId(deviceId);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // AudioContext recreation
@@ -171,11 +157,7 @@ async function recreateAudioContextWithDevice(trackIndex, deviceId, audioElement
 
 async function createAudioContextWithDevice(deviceId) {
   const context = new (window.AudioContext || window.webkitAudioContext)();
-  
-  if (typeof context.setSinkId === "function") {
-    await context.setSinkId(deviceId);
-  }
-  
+  if (context.setSinkId) await context.setSinkId(deviceId);
   return context;
 }
 
@@ -189,7 +171,7 @@ function createMasterGain(context, masterVolume) {
     destination.channelCountMode = "explicit";
     destination.channelInterpretation = "discrete";
   } catch (error) {
-    destination.channelCount = FALLBACK_CHANNEL_COUNT; // Fallback to stereo
+    destination.channelCount = AUDIO_CONFIG.FALLBACK_CHANNEL_COUNT; // Fallback to stereo
   }
 
   // Create and configure master gain

@@ -1,36 +1,32 @@
-/* CSS Variables für einheitliche Spacing-Werte */
-:root {
-  --padding-container: 1rem; /* Hauptcontainer */
-  --padding-small: 0.25rem; /* Kleine interne Elemente */
-  --padding-reset: 0; /* Reset für spezielle Bereiche */
-
-  --margin-standard: 1rem; /* Standard-Abstände */
-  --margin-small: 0.5rem; /* Kleine Abstände */
-  --margin-reset: 0; /* Margin-Reset */
-}
-
-.controls {
+/* Gemeinsame Container-Styles */
+.controls,
+.track,
+.artnet-settings,
+.udp-trigger-settings {
   border: 1px solid silver;
-  padding: var(--padding-container);
-  margin-bottom: var(--margin-standard);
+  padding: 1rem;
+  margin-bottom: 1rem;
 }
 
-.controls-title {
-  margin-bottom: var(--margin-small);
+/* Gemeinsame Titel-Styles */
+.controls-title,
+.artnet-title,
+.udp-trigger-title {
+  margin-bottom: 0.5rem;
   font-weight: bold;
 }
 
 .control-group {
-  margin-bottom: var(--margin-standard);
+  margin-bottom: 1rem;
 }
 
 .control-group label {
   display: block;
-  margin-bottom: var(--margin-small);
+  margin-bottom: 0.5rem;
 }
 
 .master-controls {
-  margin-top: var(--margin-reset);
+  margin-top: 0;
 }
 
 #track-list {
@@ -39,31 +35,11 @@
   gap: 1.5rem;
 }
 
-.track {
-  border: 1px solid silver;
-  padding: var(--padding-container);
-}
-
-/* Gemeinsame Settings-Container */
-.artnet-settings,
-.udp-trigger-settings {
-  border: 1px solid silver;
-  padding: var(--padding-container);
-  margin-bottom: var(--margin-standard);
-}
-
-/* Gemeinsame Titel-Styles */
-.artnet-title,
-.udp-trigger-title {
-  margin-bottom: var(--margin-small);
-  font-weight: bold;
-}
-
 /* IP field styling */
 #artnet-ip,
 #udp-trigger-ip {
   display: none;
-  margin-left: var(--margin-small);
+  margin-left: 0.5rem;
   width: 150px;
 }
 
@@ -73,43 +49,51 @@
 }
 
 .setting-group {
-  margin-bottom: var(--margin-small);
+  margin-bottom: 0.5rem;
 }
 
 .setting-group:last-child {
-  margin-bottom: var(--margin-reset);
+  margin-bottom: 0;
 }
 
 .track-info {
-  margin-bottom: var(--margin-small);
+  margin-bottom: 0.5rem;
 }
 
 .track-info label {
   font-weight: bold;
   display: block;
-  margin-bottom: var(--margin-small);
+  margin-bottom: 0.5rem;
 }
 
-.track-file-controls {
+/* Flex Container für Controls */
+.track-file-controls,
+.video-track-controls,
+.timeline-wrapper,
+.track-controls,
+.audio-device-row,
+.audio-control-row,
+.video-device-row,
+.video-control-row,
+.volume-control {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.file-input {
-  display: none;
+.video-track-controls {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
 }
 
+/* Hidden Elements */
+.file-input,
 .video-window-btn {
   display: none;
 }
 
-.video-track-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
+/* Label Sizing */
 .device-label {
   min-width: 85px;
   white-space: nowrap;
@@ -120,22 +104,17 @@
   white-space: nowrap;
 }
 
-.timeline-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .timeline-progress {
   flex-grow: 1;
 }
 
-/* Track Controls - gemeinsame Basis */
 .track-controls {
-  margin-top: var(--margin-small);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Video track controls - smaller gap to timeline */
+.video-track .track-controls {
+  margin-top: 0.25rem;
 }
 
 /* Audio track controls - vertical layout */
@@ -144,31 +123,14 @@
   align-items: flex-start;
 }
 
-/* Device und Control Rows */
-.audio-device-row,
-.audio-control-row,
-.video-device-row,
-.video-control-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .video-device-row {
-  padding: var(--padding-small) 0;
-  margin-bottom: var(--margin-small);
-}
-
-.volume-control {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  padding: 0.25rem 0;
 }
 
 /* Video Window Styles */
 .video-window-body {
-  margin: var(--margin-reset);
-  padding: var(--padding-reset);
+  margin: 0;
+  padding: 0;
   background: #000;
   display: flex;
   align-items: center;
@@ -184,12 +146,12 @@
   height: auto;
 }
 
-/* Status Display - gemeinsame Basis */
+/* Status Display */
 .artnet-status,
 .udp-trigger-status {
   color: #000;
   font-weight: normal;
-  margin-left: var(--margin-small);
+  margin-left: 0.5rem;
 }
 
 /* Status-Zustände */
@@ -205,5 +167,5 @@
 }
 
 .ip-info {
-  margin-left: var(--margin-small);
+  margin-left: 0.5rem;
 }

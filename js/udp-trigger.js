@@ -7,24 +7,25 @@ class UDPTrigger {
     this.ws = null;
     this.isConnected = false;
     
+    // Cache DOM elements once
+    this.elements = {
+      enabled: document.getElementById("udp-trigger-enabled"),
+      ip: document.getElementById("udp-trigger-ip"),
+      port: document.getElementById("udp-trigger-port"),
+      message: document.getElementById("udp-trigger-message"),
+      ipPreset: document.getElementById("udp-trigger-ip-preset"),
+      apply: document.getElementById("udp-trigger-apply"),
+      status: document.getElementById("udp-trigger-status")
+    };
+    
     this.setupUI();
     this.connectToServer();
   }
 
-  // Helper to get DOM elements on demand
-  getElement(id) {
-    return document.getElementById(id);
-  }
-
   setupUI() {
-    const enabled = this.getElement("udp-trigger-enabled");
-    const ip = this.getElement("udp-trigger-ip");
-    const port = this.getElement("udp-trigger-port");
-    const message = this.getElement("udp-trigger-message");
-    const ipPreset = this.getElement("udp-trigger-ip-preset");
-    const apply = this.getElement("udp-trigger-apply");
+    const { enabled, ip, port, message, ipPreset, apply } = this.elements;
 
-    // Set initial values
+    // Set initial values and event handlers in one pass
     if (enabled) {
       enabled.checked = this.enabled;
       enabled.addEventListener("change", () => {
@@ -52,14 +53,9 @@ class UDPTrigger {
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     this.ws = new WebSocket(`${wsProtocol}//${window.location.host}`);
 
-    this.ws.onopen = () => {
-      this.isConnected = true;
-      this.updateStatus();
-    };
-
+    this.ws.onopen = () => this.setConnectionState(true);
     this.ws.onclose = this.ws.onerror = () => {
-      this.isConnected = false;
-      this.updateStatus();
+      this.setConnectionState(false);
       setTimeout(() => this.connectToServer(), 3000);
     };
 
@@ -68,8 +64,6 @@ class UDPTrigger {
         const data = JSON.parse(event.data);
         if (data.type === "udp-trigger-sent") {
           this.showSentStatus(data.details);
-        } else {
-          this.updateStatus();
         }
       } catch (e) {
         // Ignore malformed messages
@@ -77,44 +71,35 @@ class UDPTrigger {
     };
   }
 
+  setConnectionState(connected) {
+    this.isConnected = connected;
+    this.updateStatus();
+  }
+
   showSentStatus(details) {
-    const status = this.getElement("udp-trigger-status");
-    if (!status) return;
+    if (!this.elements.status) return;
     
-    status.textContent = `(${details.ip}:${details.port} / ${details.message} - SENT)`;
-    status.className = "udp-trigger-status enabled";
+    this.elements.status.textContent = `(${details.ip}:${details.port} / ${details.message} - SENT)`;
+    this.elements.status.className = "udp-trigger-status enabled";
     setTimeout(() => this.updateStatus(), 2000);
   }
 
   applySettings() {
-    const enabled = this.getElement("udp-trigger-enabled");
-    const ipPreset = this.getElement("udp-trigger-ip-preset");
-    const ip = this.getElement("udp-trigger-ip");
-    const port = this.getElement("udp-trigger-port");
-    const message = this.getElement("udp-trigger-message");
-
+    const { enabled, ipPreset, ip, port, message } = this.elements;
     if (!enabled || !ip || !port || !message) return;
 
     this.enabled = enabled.checked;
 
-    // Get IP from appropriate source
-    if (ipPreset?.value === "auto-broadcast") {
-      this.ip = ip.value.trim() || this.getBroadcastIP();
-    } else if (ipPreset?.value && ipPreset.value !== "custom") {
-      this.ip = ipPreset.value;
-    } else {
-      this.ip = ip.value.trim();
-    }
+    // Resolve IP based on preset selection
+    this.ip = ipPreset?.value === "auto-broadcast" ? (ip.value.trim() || this.getBroadcastIP()) :
+              ipPreset?.value && ipPreset.value !== "custom" ? ipPreset.value :
+              ip.value.trim();
 
     this.port = parseInt(port.value);
     this.message = message.value.trim();
+    ip.value = this.ip; // Update display
 
-    // Update the input field to show the resolved IP
-    ip.value = this.ip;
-
-    if (this.isValid()) {
-      this.sendConfigToServer();
-    }
+    if (this.isValid()) this.sendConfigToServer();
   }
 
   isValid() {
@@ -138,39 +123,33 @@ class UDPTrigger {
   }
 
   isValidIP(ip) {
-    const parts = ip.split(".");
-    return parts.length === 4 && parts.every(part => {
-      const num = parseInt(part);
-      return !isNaN(num) && num >= 0 && num <= 255;
-    });
+    return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) && 
+           ip.split(".").every(part => parseInt(part) <= 255);
   }
 
   updateStatus() {
-    const status = this.getElement("udp-trigger-status");
-    if (!status) return;
+    if (!this.elements.status) return;
     
-    const statusClass = !this.isConnected ? "error" : 
-                       this.enabled ? "enabled" : "disabled";
-
-    status.textContent = `(${this.ip}:${this.port} / ${this.message})`;
-    status.className = `udp-trigger-status ${statusClass}`;
+    const statusClass = !this.isConnected ? "error" : this.enabled ? "enabled" : "disabled";
+    this.elements.status.textContent = `(${this.ip}:${this.port} / ${this.message})`;
+    this.elements.status.className = `udp-trigger-status ${statusClass}`;
   }
 
   sendTrigger(action = "start") {
-    if (!this.enabled || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.enabled || this.ws?.readyState !== WebSocket.OPEN) return;
 
     let message = this.message;
     if (action === "stop") {
       message = this.message.replace(/START/gi, "STOP");
-      if (message === this.message) return; // Only send if message actually changed
+      if (message === this.message) return;
     }
 
     this.ws.send(JSON.stringify({
       type: "udp-trigger-send",
-      action: action,
+      action,
       ip: this.ip,
       port: this.port,
-      message: message
+      message
     }));
   }
 }

@@ -14,12 +14,24 @@ function validateFileType(file, isVideoTrack, index) {
   return true;
 }
 
+// Helper function to set audio device with error handling
+async function setAudioDevice(audio, deviceId) {
+  if (!deviceId || !audio || typeof audio.setSinkId !== "function") return;
+  
+  try {
+    await audio.setSinkId(deviceId);
+  } catch (error) {
+    console.warn("Could not set audio device:", error);
+  }
+}
+
 // Helper function to setup AudioContext for a track
 async function setupAudioContext(index, audioContextContainer, audioDeviceSelect) {
   if (audioContextContainer.contexts[index]) return;
   
-  audioContextContainer.contexts[index] = new (window.AudioContext || window.webkitAudioContext)();
-  const context = audioContextContainer.contexts[index];
+  const context = new (window.AudioContext || window.webkitAudioContext)();
+  audioContextContainer.contexts[index] = context;
+  
   const destination = context.destination;
   const maxChannels = destination.maxChannelCount;
 
@@ -38,12 +50,12 @@ async function setupAudioContext(index, audioContextContainer, audioDeviceSelect
   }
 
   // Create master gain
-  audioContextContainer.masterGains[index] = context.createGain();
-  const masterGain = audioContextContainer.masterGains[index];
+  const masterGain = context.createGain();
   masterGain.channelCount = destination.channelCount;
   masterGain.channelCountMode = "explicit";
   masterGain.channelInterpretation = "discrete";
   masterGain.connect(destination);
+  audioContextContainer.masterGains[index] = masterGain;
 
   // Apply audio device if selected
   if (audioDeviceSelect?.value) {
@@ -111,20 +123,35 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
       fileNameSpan.textContent = file.name;
 
       // Create audio/video element
-      const audio = isVideoTrack ? 
-        await setupVideoTrack(file, track, index) : 
-        setupAudioTrack(file);
+      const audio = isVideoTrack ? document.createElement("video") : new Audio();
+      audio.src = URL.createObjectURL(file);
+      audio.muted = false;
+      audio.loop = false;
       
       audioElements[index] = audio;
 
-      // Set audio device if selected
-      if (audioDeviceSelect?.value && typeof audio.setSinkId === "function") {
-        try {
-          await audio.setSinkId(audioDeviceSelect.value);
-        } catch (error) {
-          console.warn("Could not set audio device:", error);
+      // Handle video window setup
+      if (isVideoTrack) {
+        const videoWindowBtn = track.querySelector(".video-window-btn");
+        if (videoWindowBtn) {
+          videoWindowBtn.style.display = "inline-block";
+          window[`_pendingVideoFile_${index}`] = file;
+          window[`_pendingVideoAudio_${index}`] = audio;
+
+          audio.addEventListener("loadedmetadata", () => {
+            if (typeof loadVideoIntoWindow === "function") {
+              loadVideoIntoWindow(file, audio, index);
+            }
+          });
+
+          if (typeof loadVideoIntoWindow === "function") {
+            setTimeout(() => loadVideoIntoWindow(file, audio, index), 100);
+          }
         }
       }
+
+      // Set audio device if selected
+      await setAudioDevice(audio, audioDeviceSelect?.value);
 
       // Setup timeline handlers
       setupTimelineHandlers(audio, timelineProgress, timeDisplay);
@@ -138,41 +165,7 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
   });
 }
 
-// Helper function to setup video track
-async function setupVideoTrack(file, track, index) {
-  const video = document.createElement("video");
-  video.src = URL.createObjectURL(file);
-  video.muted = false;
-  video.loop = false;
 
-  const videoWindowBtn = track.querySelector(".video-window-btn");
-  if (videoWindowBtn) {
-    videoWindowBtn.style.display = "inline-block";
-    window[`_pendingVideoFile_${index}`] = file;
-    window[`_pendingVideoAudio_${index}`] = video;
-
-    video.addEventListener("loadedmetadata", () => {
-      if (typeof loadVideoIntoWindow === "function") {
-        loadVideoIntoWindow(file, video, index);
-      }
-    });
-
-    if (typeof loadVideoIntoWindow === "function") {
-      setTimeout(() => {
-        loadVideoIntoWindow(file, video, index);
-      }, 100);
-    }
-  }
-
-  return video;
-}
-
-// Helper function to setup audio track
-function setupAudioTrack(file) {
-  const audio = new Audio(URL.createObjectURL(file));
-  audio.loop = false;
-  return audio;
-}
 
 // Helper function to setup Web Audio API connections
 function setupWebAudioConnections(audio, index, audioContextContainer, audioSources, track, isVideoTrack) {
@@ -186,52 +179,37 @@ function setupWebAudioConnections(audio, index, audioContextContainer, audioSour
   merger.channelInterpretation = "discrete";
 
   if (isVideoTrack) {
-    setupVideoWebAudio(source, merger, context, audioContextContainer, index, track, audioSources, audio);
+    // Video track setup with stereo splitting
+    const splitter = context.createChannelSplitter(2);
+    const leftGainNode = context.createGain();
+    const rightGainNode = context.createGain();
+
+    source.connect(splitter);
+    splitter.connect(leftGainNode, 0);
+    splitter.connect(rightGainNode, 1);
+    leftGainNode.connect(merger, 0, 0);
+    rightGainNode.connect(merger, 0, 1);
+    merger.connect(audioContextContainer.masterGains[index]);
+
+    audioSources[index] = { audio, source, merger, splitter, leftGainNode, rightGainNode };
+
+    // Set default channel selects
+    const leftChannelSelect = track.querySelector(`#channel-select-${index}-left`);
+    const rightChannelSelect = track.querySelector(`#channel-select-${index}-right`);
+    if (leftChannelSelect) leftChannelSelect.value = 1;
+    if (rightChannelSelect) rightChannelSelect.value = 2;
   } else {
-    setupAudioWebAudio(source, merger, context, audioContextContainer, index, track, audioSources, audio);
+    // Audio track setup with single gain
+    const gainNode = context.createGain();
+    
+    source.connect(gainNode);
+    gainNode.connect(merger, 0, 0);
+    merger.connect(audioContextContainer.masterGains[index]);
+
+    audioSources[index] = { audio, source, merger, gainNode };
+
+    // Set default channel select
+    const channelSelect = track.querySelector(".channel-select");
+    if (channelSelect) channelSelect.value = 1;
   }
-}
-
-// Helper function for video Web Audio setup
-function setupVideoWebAudio(source, merger, context, audioContextContainer, index, track, audioSources, audio) {
-  const splitter = context.createChannelSplitter(2);
-  const leftGainNode = context.createGain();
-  const rightGainNode = context.createGain();
-
-  source.connect(splitter);
-  splitter.connect(leftGainNode, 0);
-  splitter.connect(rightGainNode, 1);
-  leftGainNode.connect(merger, 0, 0);
-  rightGainNode.connect(merger, 0, 1);
-  merger.connect(audioContextContainer.masterGains[index]);
-
-  audioSources[index] = {
-    audio,
-    source,
-    merger,
-    splitter,
-    leftGainNode,
-    rightGainNode,
-  };
-
-  // Set default channel selects
-  const leftChannelSelect = track.querySelector(`#channel-select-${index}-left`);
-  const rightChannelSelect = track.querySelector(`#channel-select-${index}-right`);
-  if (leftChannelSelect) leftChannelSelect.value = 1;
-  if (rightChannelSelect) rightChannelSelect.value = 2;
-}
-
-// Helper function for audio Web Audio setup
-function setupAudioWebAudio(source, merger, context, audioContextContainer, index, track, audioSources, audio) {
-  const gainNode = context.createGain();
-  
-  source.connect(gainNode);
-  gainNode.connect(merger, 0, 0); // Connect to channel 1 initially
-  merger.connect(audioContextContainer.masterGains[index]);
-
-  audioSources[index] = { audio, source, merger, gainNode };
-
-  // Set default channel select
-  const channelSelect = track.querySelector(".channel-select");
-  if (channelSelect) channelSelect.value = 1;
 }
