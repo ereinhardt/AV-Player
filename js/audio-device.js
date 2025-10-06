@@ -1,275 +1,207 @@
-// --- Device Selection ---
+// Audio Device Configuration Constants
+const AUDIO_CONFIG = {
+  FALLBACK_CHANNEL_COUNT: 2,
+  DEFAULT_CHANNEL: 1,
+  DEFAULT_OPTIONS: `
+    <option value="default">Default Audio Device</option>
+    <option value="">Built-in Speakers</option>
+  `
+};
+
+// Audio Device Management
 async function getAudioDevices() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-    return;
-  }
-
   try {
-    // Request microphone permission to get device labels
-    let stream = null;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (permissionError) {
-      // Silently handle permission denial
-    }
-
+    if (!navigator.mediaDevices?.enumerateDevices) throw new Error('API not supported');
+    
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const audioOutputDevices = devices.filter(
-      (device) => device.kind === "audiooutput"
-    );
+    const audioOutputDevices = devices.filter(device => device.kind === "audiooutput");
+    populateDeviceSelectors(audioOutputDevices);
+  } catch {
+    populateWithFallbackDevices();
+  }
+}
 
-    // Stop the microphone stream if we got one
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
+function populateDeviceSelectors(audioOutputDevices) {
+  document.querySelectorAll(".audio-device-select").forEach(select => {
+    select.innerHTML = audioOutputDevices
+      .map((device, index) => 
+        `<option value="${device.deviceId}">${device.label || `Audio Output ${index + 1}`}</option>`
+      ).join('');
+    select.dispatchEvent(new Event("change"));
+  });
+}
 
-    const trackDeviceSelectors = document.querySelectorAll(
-      ".audio-device-select"
-    );
-    trackDeviceSelectors.forEach((select) => {
-      select.innerHTML = "";
-      audioOutputDevices.forEach((device, index) => {
-        const option = document.createElement("option");
-        option.value = device.deviceId;
-        option.textContent = device.label || `Audio Output ${index + 1}`;
-        select.appendChild(option);
-      });
-      select.dispatchEvent(new Event("change"));
-    });
-  } catch (error) {
-    // Fallback: Add generic device options
-    const trackDeviceSelectors = document.querySelectorAll(
-      ".audio-device-select"
-    );
-    trackDeviceSelectors.forEach((select) => {
-      select.innerHTML = `
-                <option value="default">Default Audio Device</option>
-                <option value="">Built-in Speakers</option>
-            `;
+function populateWithFallbackDevices() {
+  document.querySelectorAll(".audio-device-select")
+    .forEach(select => select.innerHTML = AUDIO_CONFIG.DEFAULT_OPTIONS);
+}
+
+async function updateChannelSelectorsForDevice(track, specificAudioDeviceSelect = null) {
+  const audioDeviceSelects = specificAudioDeviceSelect 
+    ? [specificAudioDeviceSelect] 
+    : track.querySelectorAll(".audio-device-select");
+
+  for (const audioDeviceSelect of audioDeviceSelects) {
+    const channelSelects = getChannelSelectors(track);
+    if (channelSelects.length === 0) continue;
+
+    const maxChannels = await getMaxChannelsForDevice(audioDeviceSelect.value);
+    updateChannelOptions(channelSelects, maxChannels);
+    
+    // Trigger change event if needed
+    const trackIndex = parseInt(track.getAttribute("data-index"));
+    const hasAudioFile = window.audioSources && window.audioSources[trackIndex];
+    
+    channelSelects.forEach(channelSelect => {
+      const currentVal = parseInt(channelSelect.value);
+      if ((!currentVal || currentVal > maxChannels) && hasAudioFile) {
+        channelSelect.dispatchEvent(new Event("change"));
+      }
     });
   }
 }
 
-async function updateChannelSelectorsForDevice(
-  track,
-  specificAudioDeviceSelect = null
-) {
-  const audioDeviceSelects = specificAudioDeviceSelect
-    ? [specificAudioDeviceSelect]
-    : track.querySelectorAll(".audio-device-select");
-
-  for (const audioDeviceSelect of audioDeviceSelects) {
-    let channelSelects = [];
-
-    if (track.classList.contains("video-track")) {
-      const leftChannelSelect = track.querySelector(
-        "#channel-select-" + track.dataset.index + "-left"
-      );
-      const rightChannelSelect = track.querySelector(
-        "#channel-select-" + track.dataset.index + "-right"
-      );
-      if (leftChannelSelect) channelSelects.push(leftChannelSelect);
-      if (rightChannelSelect) channelSelects.push(rightChannelSelect);
-    } else {
-      const channelSelect = track.querySelector(".channel-select");
-      if (channelSelect) channelSelects.push(channelSelect);
-    }
-
-    if (channelSelects.length === 0) continue;
-
-    let tempContext;
-    try {
-      tempContext = new (window.AudioContext || window.webkitAudioContext)();
-      await tempContext.setSinkId(audioDeviceSelect.value);
-      let maxChannels = tempContext.destination.maxChannelCount;
-
-      channelSelects.forEach((channelSelect) => {
-        const currentVal = parseInt(channelSelect.value);
-        channelSelect.innerHTML = "";
-        for (let i = 1; i <= maxChannels; i++) {
-          const option = document.createElement("option");
-          option.value = i;
-          option.textContent = `Channel ${i}`;
-          channelSelect.appendChild(option);
-        }
-
-        if (currentVal && currentVal <= maxChannels) {
-          channelSelect.value = currentVal;
-        } else {
-          channelSelect.value = 1;
-        }
-
-        const trackIndex = parseInt(track.getAttribute("data-index"));
-        const hasAudioFile =
-          window.audioSources && window.audioSources[trackIndex];
-
-        if ((!currentVal || currentVal > maxChannels) && hasAudioFile) {
-          channelSelect.dispatchEvent(new Event("change"));
-        }
-      });
-    } catch (e) {
-      channelSelects.forEach((channelSelect) => {
-        const currentVal = parseInt(channelSelect.value);
-        channelSelect.innerHTML = `
-                    <option value="1">Channel 1</option>
-                    <option value="2">Channel 2</option>
-                `;
-        channelSelect.value = 1;
-
-        const trackIndex = parseInt(track.getAttribute("data-index"));
-        const hasAudioFile =
-          window.audioSources && window.audioSources[trackIndex];
-
-        if ((!currentVal || currentVal > 2) && hasAudioFile) {
-          channelSelect.dispatchEvent(new Event("change"));
-        }
-      });
-    } finally {
-      if (tempContext) {
-        tempContext.close();
-      }
-    }
+function getChannelSelectors(track) {
+  if (track.classList.contains("video-track")) {
+    return [
+      track.querySelector(`#channel-select-${track.dataset.index}-left`),
+      track.querySelector(`#channel-select-${track.dataset.index}-right`)
+    ].filter(Boolean);
+  } else {
+    const channelSelect = track.querySelector(".channel-select");
+    return channelSelect ? [channelSelect] : [];
   }
+}
+
+async function getMaxChannelsForDevice(deviceId) {
+  let context;
+  try {
+    context = new (window.AudioContext || window.webkitAudioContext)();
+    if (deviceId && typeof context.setSinkId === 'function') {
+      await context.setSinkId(deviceId);
+    }
+    return context.destination.maxChannelCount;
+  } catch {
+    return AUDIO_CONFIG.FALLBACK_CHANNEL_COUNT;
+  } finally {
+    context?.close();
+  }
+}
+
+function updateChannelOptions(channelSelects, maxChannels) {
+  channelSelects.forEach(channelSelect => {
+    const currentVal = parseInt(channelSelect.value);
+    channelSelect.innerHTML = Array.from({length: maxChannels}, (_, i) => 
+      `<option value="${i + 1}">Channel ${i + 1}</option>`
+    ).join('');
+    
+    channelSelect.value = (currentVal && currentVal <= maxChannels) 
+      ? currentVal 
+      : AUDIO_CONFIG.DEFAULT_CHANNEL;
+  });
 }
 
 function setupDeviceChangeListeners(audioElements, audioContextContainer) {
   const tracks = document.querySelectorAll(".track");
-  tracks.forEach((track, arrayIndex) => {
-    // Use the data-index attribute instead of array index
+  tracks.forEach(track => {
     const index = parseInt(track.getAttribute("data-index"));
-
     const audioDeviceSelects = track.querySelectorAll(".audio-device-select");
-    audioDeviceSelects.forEach((audioDeviceSelect) => {
+    
+    audioDeviceSelects.forEach(audioDeviceSelect => {
       audioDeviceSelect.addEventListener("change", async () => {
-        const deviceId = audioDeviceSelect.value;
-
-        // Update channel selectors based on the new device's capabilities for this specific audio device select
         await updateChannelSelectorsForDevice(track, audioDeviceSelect);
-
-        // Apply the device setting to this track
-        await setTrackAudioDevice(
-          index,
-          deviceId,
-          audioElements,
-          audioContextContainer
-        );
+        await setTrackAudioDevice(index, audioDeviceSelect.value, audioElements, audioContextContainer);
       });
     });
   });
 }
 
-// New function to handle setting audio device for a specific track
-async function setTrackAudioDevice(
-  trackIndex,
-  deviceId,
-  audioElements,
-  audioContextContainer
-) {
-  let audioDeviceSet = false;
-  let contextDeviceSet = false;
-
-  // First, try to set the device on the audio element (this is crucial for MediaElementSource)
-  const audio = audioElements && audioElements[trackIndex];
-  if (audio && typeof audio.setSinkId === "function") {
-    try {
-      await audio.setSinkId(deviceId);
-      audioDeviceSet = true;
-    } catch (error) {
-      // This is expected when MediaElementSource is already connected
-      // AudioContext routing will handle the device switching instead
-    }
+// Simplified device setting
+async function setTrackAudioDevice(trackIndex, deviceId, audioElements, audioContextContainer) {
+  const audioElement = audioElements[trackIndex];
+  const context = audioContextContainer?.contexts?.[trackIndex];
+  
+  // Try setting device on audio element and context
+  const results = await Promise.allSettled([
+    trySetDeviceId(audioElement, deviceId),
+    trySetDeviceId(context, deviceId)
+  ]);
+  
+  const audioDeviceSet = results[0].status === 'fulfilled' && results[0].value;
+  const contextDeviceSet = results[1].status === 'fulfilled' && results[1].value;
+  
+  // If both failed, recreate context
+  if (!audioDeviceSet && !contextDeviceSet) {
+    await recreateAudioContextWithDevice(trackIndex, deviceId, audioElements, audioContextContainer);
   }
-
-  // Then, also set the device on the AudioContext
-  if (
-    audioContextContainer &&
-    audioContextContainer.contexts &&
-    audioContextContainer.contexts[trackIndex]
-  ) {
-    try {
-      // Check if setSinkId is supported on AudioContext (Chrome 110+, Firefox support varies)
-      if (
-        typeof audioContextContainer.contexts[trackIndex].setSinkId ===
-        "function"
-      ) {
-        await audioContextContainer.contexts[trackIndex].setSinkId(deviceId);
-        contextDeviceSet = true;
-      }
-    } catch (error) {
-      // If AudioContext device setting fails, we might need to recreate the AudioContext
-      // with the correct device from the start
-      if (!audioDeviceSet) {
-        await recreateAudioContextWithDevice(
-          trackIndex,
-          deviceId,
-          audioElements,
-          audioContextContainer
-        );
-      }
-    }
-  }
-
+  
   return { audioDeviceSet, contextDeviceSet };
 }
 
-// Function to recreate AudioContext with specific device
-async function recreateAudioContextWithDevice(
-  trackIndex,
-  deviceId,
-  audioElements,
-  audioContextContainer
-) {
+async function trySetDeviceId(target, deviceId) {
+  if (!target || typeof target.setSinkId !== "function") return false;
+  
   try {
-    // Close existing context if it exists
-    if (audioContextContainer.contexts[trackIndex]) {
-      await audioContextContainer.contexts[trackIndex].close();
-    }
+    await target.setSinkId(deviceId);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-    // Create new AudioContext
-    const newContext = new (window.AudioContext || window.webkitAudioContext)();
+// AudioContext recreation
+async function recreateAudioContextWithDevice(trackIndex, deviceId, audioElements, audioContextContainer) {
+  try {
+    // Close existing context
+    await audioContextContainer.contexts[trackIndex]?.close();
 
-    // Try to set the device immediately after creation
-    if (typeof newContext.setSinkId === "function") {
-      await newContext.setSinkId(deviceId);
-    }
+    // Create new context with device
+    const newContext = await createAudioContextWithDevice(deviceId);
+    const masterGain = createMasterGain(newContext, audioContextContainer.masterVolume);
 
-    // Configure destination for multi-channel output
-    const destination = newContext.destination;
-    const maxChannels = destination.maxChannelCount;
-
-    try {
-      destination.channelCount = maxChannels;
-      destination.channelCountMode = "explicit";
-      destination.channelInterpretation = "discrete";
-    } catch (error) {
-      // Fallback to stereo
-      destination.channelCount = 2;
-    }
-
-    // Create new master gain
-    const masterGain = newContext.createGain();
-    masterGain.channelCount = destination.channelCount;
-    masterGain.channelCountMode = "explicit";
-    masterGain.channelInterpretation = "discrete";
-    masterGain.connect(destination);
-
-    // Apply master volume if it exists
-    if (audioContextContainer.masterVolume !== undefined) {
-      masterGain.gain.value = audioContextContainer.masterVolume;
-    }
-
-    // Store the new context and gain
+    // Update containers
     audioContextContainer.contexts[trackIndex] = newContext;
     audioContextContainer.masterGains[trackIndex] = masterGain;
 
-    // If there's an audio element, reconnect it to the new context
-    const audio = audioElements[trackIndex];
-    if (audio && !audio.paused) {
-      // Audio will be reconnected automatically when playback resumes
-    }
-
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
+}
+
+async function createAudioContextWithDevice(deviceId) {
+  const context = new (window.AudioContext || window.webkitAudioContext)();
+  
+  if (typeof context.setSinkId === "function") {
+    await context.setSinkId(deviceId);
+  }
+  
+  return context;
+}
+
+function createMasterGain(context, masterVolume) {
+  const destination = context.destination;
+  const maxChannels = destination.maxChannelCount;
+  
+  // Configure destination
+  try {
+    destination.channelCount = maxChannels;
+    destination.channelCountMode = "explicit";
+    destination.channelInterpretation = "discrete";
+  } catch (error) {
+    destination.channelCount = FALLBACK_CHANNEL_COUNT; // Fallback to stereo
+  }
+
+  // Create and configure master gain
+  const masterGain = context.createGain();
+  masterGain.channelCount = destination.channelCount;
+  masterGain.channelCountMode = "explicit";
+  masterGain.channelInterpretation = "discrete";
+  masterGain.connect(destination);
+  
+  if (masterVolume !== undefined) {
+    masterGain.gain.value = masterVolume;
+  }
+  
+  return masterGain;
 }

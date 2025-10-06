@@ -1,55 +1,41 @@
 function setupMasterTimeline(audioElements) {
-  const masterTimelineProgress = document.getElementById(
-    "master-timeline-progress"
-  );
-  const masterTimeDisplay = document.getElementById("master-time-display");
-
-  let longestDuration = 0;
-  let longestAudio = null;
+  const progressBar = document.getElementById("master-timeline-progress");
+  const timeDisplay = document.getElementById("master-time-display");
+  
+  // Early return if DOM elements are missing
+  if (!progressBar || !timeDisplay) {
+    console.warn("Master timeline elements not found");
+    return;
+  }
 
   function updateMasterTimeline() {
-    longestDuration = 0;
-    longestAudio = null;
+    // Find the audio with the longest duration
+    const longestAudio = audioElements.reduce((longest, audio) => {
+      return audio?.duration > (longest?.duration || 0) ? audio : longest;
+    }, null);
 
-    audioElements.forEach((audio) => {
-      if (audio && audio.duration > longestDuration) {
-        longestDuration = audio.duration;
-        longestAudio = audio;
-      }
-    });
+    if (longestAudio?.duration) {
+      const { currentTime, duration } = longestAudio;
+      
+      // Update display and progress
+      timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+      progressBar.value = (currentTime / duration) * 100;
 
-    if (longestAudio) {
-      masterTimeDisplay.textContent = `${formatTime(
-        longestAudio.currentTime
-      )} / ${formatTime(longestDuration)}`;
-      const progress = (longestAudio.currentTime / longestDuration) * 100;
-      masterTimelineProgress.value = progress;
-
-      // Send Art-Net timecode if available
-      if (
-        window.artNetTimecode &&
-        typeof window.artNetTimecode.sendTimecode === "function"
-      ) {
-        const timecode = window.artNetTimecode.sendTimecode(
-          longestAudio.currentTime,
-          longestDuration
-        );
-        // Debug output (will be visible in browser console)
-        if (timecode && longestAudio.currentTime > 0) {
-          console.debug(
-            `Art-Net Timecode sent: ${timecode.formatted} to ${window.artNetTimecode.ip}:${window.artNetTimecode.port}`
-          );
+      // Send Art-Net timecode if enabled and playing
+      if (currentTime > 0 && window.artNetTimecode?.sendTimecode) {
+        const timecode = window.artNetTimecode.sendTimecode(currentTime, duration);
+        if (timecode) {
+          console.debug(`Art-Net: ${timecode.formatted} → ${window.artNetTimecode.ip}:${window.artNetTimecode.port}`);
         }
       }
     } else {
-      masterTimeDisplay.textContent = "00:00:00 / 00:00:00";
-      masterTimelineProgress.value = 0;
+      // Reset to default state
+      timeDisplay.textContent = "00:00:00 / 00:00:00";
+      progressBar.value = 0;
     }
   }
 
-  // Update the master timeline every 250ms
+  // Update every 250ms and on file load events
   setInterval(updateMasterTimeline, 250);
-
-  // Also update when files are loaded
   document.addEventListener("fileLoaded", updateMasterTimeline);
 }
