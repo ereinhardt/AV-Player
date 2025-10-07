@@ -48,12 +48,12 @@
       const overlay = document.getElementById("black-overlay");
 
       function updateOverlay() {
-        const shouldShow = videoHasEnded || (video.paused && video.currentTime <= 1);
+        const shouldShow = videoHasEnded;
         overlay.style.display = shouldShow ? "block" : "none";
       }
 
       function isVideoAtEnd() {
-        return video.ended || (video.duration && video.currentTime >= video.duration - 1);
+        return video.ended || (video.duration && video.currentTime >= video.duration - 1); //!IMPORTANT
       }
 
       function sendMessage(type, data = {}) {
@@ -180,11 +180,6 @@
       video.addEventListener("ended", () => {
         videoHasEnded = true;
         updateOverlay();
-        setTimeout(() => {
-          if (videoHasEnded) {
-            video.currentTime = 0;
-          }
-        }, 150);
         sendMessage("VIDEO_ENDED", {
           hasEnded: true,
           duration: video.duration,
