@@ -48,7 +48,7 @@
       const overlay = document.getElementById("black-overlay");
 
       function updateOverlay() {
-        const shouldShow = videoHasEnded || (video.paused && isVideoAtEnd());
+        const shouldShow = videoHasEnded || (video.paused && video.currentTime <= 1);
         overlay.style.display = shouldShow ? "block" : "none";
       }
 
