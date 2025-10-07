@@ -47,12 +47,13 @@
       const video = document.getElementById("video-player");
       const overlay = document.getElementById("black-overlay");
 
-      function setOverlay(show) {
-        overlay.style.display = show ? "block" : "none";
+      function updateOverlay() {
+        const shouldShow = videoHasEnded || (video.paused && isVideoAtEnd());
+        overlay.style.display = shouldShow ? "block" : "none";
       }
 
       function isVideoAtEnd() {
-        return video.ended || (video.duration && video.currentTime >= video.duration - 1); //!IMPORTANT
+        return video.ended || (video.duration && video.currentTime >= video.duration - 1);
       }
 
       function sendMessage(type, data = {}) {
@@ -61,6 +62,31 @@
             window.opener.postMessage({ type, data }, window.location.origin);
           } catch (e) {}
         }
+      }
+
+      function resetVideo(shouldPlay = false) {
+        const src = video.src;
+        video.pause();
+        video.src = "";
+        video.load();
+        video.src = src;
+        video.load();
+        video.currentTime = 0;
+        
+        if (shouldPlay) {
+          isLoopRestarting = true;
+          setTimeout(() => {
+            video.play().then(() => {
+              isLoopRestarting = false;
+              videoHasEnded = false;
+            }).catch(() => {
+              isLoopRestarting = false;
+            });
+          }, 100);
+        } else {
+          videoHasEnded = false;
+        }
+        updateOverlay();
       }
 
       // Message handling
@@ -76,22 +102,20 @@
             video.src = data.url;
             video.muted = true;
             video.controls = false;
-            setOverlay(false);
+            updateOverlay();
             break;
 
           case "PLAY":
             if ((!videoHasEnded && !video.ended) || isLoopRestarting) {
               videoHasEnded = false;
-              setOverlay(false);
               video.play().catch((e) => console.warn("Play failed:", e));
             }
+            updateOverlay();
             break;
 
           case "PAUSE":
             video.pause();
-            if (videoHasEnded || isVideoAtEnd()) {
-              setOverlay(true);
-            }
+            updateOverlay();
             break;
 
           case "SEEK":
@@ -120,43 +144,11 @@
             break;
 
           case "RESTART_VIDEO":
-            isLoopRestarting = true;
-            videoHasEnded = false;
-            setOverlay(false);
-            video.pause();
-            
-            if (isVideoAtEnd()) {
-              const src = video.src;
-              video.src = "";
-              video.load();
-              video.src = src;
-              video.load();
-            }
-            
-            video.currentTime = 0;
-            setTimeout(() => {
-              video.play().then(() => {
-                isLoopRestarting = false;
-                setOverlay(false);
-              }).catch(() => {
-                isLoopRestarting = false;
-              });
-            }, 100);
+            resetVideo(true);
             break;
 
           case "RESET_VIDEO":
-            isLoopRestarting = false;
-            videoHasEnded = false;
-            video.pause();
-            
-            const src = video.src;
-            video.src = "";
-            video.load();
-            video.src = src;
-            video.load();
-            
-            video.currentTime = 0;
-            setOverlay(true);
+            resetVideo(false);
             break;
         }
       });
@@ -164,39 +156,33 @@
       // Video events
       video.addEventListener("play", () => {
         videoHasEnded = false;
-        setOverlay(false);
+        updateOverlay();
         if (!isReceivingSeek) {
           sendMessage("VIDEO_PLAY");
         }
       });
 
       video.addEventListener("pause", () => {
-        if (videoHasEnded || isVideoAtEnd()) {
-          setOverlay(true);
-        }
+        updateOverlay();
         if (!isReceivingSeek) {
           sendMessage("VIDEO_PAUSE");
         }
       });
 
       video.addEventListener("timeupdate", () => {
-        if (isVideoAtEnd()) {
-          if (!videoHasEnded) {
-            videoHasEnded = true;
-            setOverlay(true);
-          }
-        } else if (!video.paused && video.currentTime > 0.01) {
-          setOverlay(false);
+        const wasEnded = videoHasEnded;
+        videoHasEnded = isVideoAtEnd();
+        if (videoHasEnded !== wasEnded) {
+          updateOverlay();
         }
       });
 
       video.addEventListener("ended", () => {
         videoHasEnded = true;
-        setOverlay(true);
+        updateOverlay();
         setTimeout(() => {
           if (videoHasEnded) {
             video.currentTime = 0;
-            setOverlay(true);
           }
         }, 150);
         sendMessage("VIDEO_ENDED", {
@@ -207,10 +193,8 @@
       });
 
       video.addEventListener("seeked", () => {
-        if (isVideoAtEnd()) {
-          videoHasEnded = true;
-          setOverlay(true);
-        }
+        videoHasEnded = isVideoAtEnd();
+        updateOverlay();
         if (!isReceivingSeek) {
           sendMessage("VIDEO_SEEKED", { time: video.currentTime });
         }
@@ -222,7 +206,7 @@
 
       // Initialize
       video.controls = false;
-      setOverlay(false);
+      updateOverlay();
 
       // Notify parent window
       window.addEventListener("load", () => {

@@ -1,44 +1,35 @@
 function setupVolumeControls(tracks, audioSources) {
   const dbToVolume = (db) => Math.pow(10, db / 20);
 
-  const getGainNode = (audioSource, side = null) => {
-    if (!audioSource) return null;
-    return side ? audioSource[`${side}GainNode`] : audioSource.gainNode;
-  };
-
   const createVolumeControl = (index, track, side = null) => {
     const suffix = side ? `-${side}` : '';
-    const elements = {
-      slider: track.querySelector(`#volume-slider-${index}${suffix}`),
-      display: track.querySelector(`#volume-db-${index}${suffix}`),
-      mute: track.querySelector(`#mute-checkbox-${index}${suffix}`)
-    };
+    const slider = track.querySelector(`#volume-slider-${index}${suffix}`);
+    const display = track.querySelector(`#volume-db-${index}${suffix}`);
+    const mute = track.querySelector(`#mute-checkbox-${index}${suffix}`);
 
-    if (!elements.slider || !elements.display || !elements.mute) return;
+    if (!slider || !display || !mute) return;
 
     const updateVolume = () => {
-      const gainNode = getGainNode(audioSources[index], side);
+      const audioSource = audioSources[index];
+      const gainNode = audioSource && (side ? audioSource[`${side}GainNode`] : audioSource.gainNode);
       
-      if (elements.mute.checked) {
+      if (mute.checked) {
         if (gainNode) gainNode.gain.value = 0;
-        elements.display.textContent = '-∞ dB';
-        elements.slider.disabled = true;
+        display.textContent = '-∞ dB';
+        slider.disabled = true;
       } else {
-        const db = parseFloat(elements.slider.value);
+        const db = parseFloat(slider.value);
         if (gainNode) gainNode.gain.value = dbToVolume(db);
-        elements.display.textContent = `${db.toFixed(1)} dB`;
-        elements.slider.disabled = false;
+        display.textContent = `${db.toFixed(1)} dB`;
+        slider.disabled = false;
       }
     };
 
-    // Initialize volume
-    const initialDb = parseFloat(elements.slider.value);
-    const gainNode = getGainNode(audioSources[index], side);
-    if (gainNode) gainNode.gain.value = dbToVolume(initialDb);
-    elements.display.textContent = `${initialDb.toFixed(1)} dB`;
+    // Initialize
+    updateVolume();
 
-    elements.slider.addEventListener('input', updateVolume);
-    elements.mute.addEventListener('change', updateVolume);
+    slider.addEventListener('input', updateVolume);
+    mute.addEventListener('change', updateVolume);
   };
 
   tracks.forEach((track) => {

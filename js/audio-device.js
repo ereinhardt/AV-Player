@@ -5,61 +5,118 @@ const AUDIO_CONFIG = {
   FALLBACK_OPTIONS: `<option value="default">Default Audio Device</option><option value="">Built-in Speakers</option>`
 };
 
-// Audio Device Management
+// Utility Functions - Shared across multiple files
+function getTrackMetadata(track) {
+  return {
+    index: parseInt(track.getAttribute("data-index")),
+    isVideoTrack: track.classList.contains("video-track")
+  };
+}
+
+function configureAudioDestination(context) {
+  const destination = context.destination;
+  const maxChannels = destination.maxChannelCount;
+
+  console.log(`Audio hardware supports ${maxChannels} channels`);
+
+  try {
+    destination.channelCount = maxChannels;
+    destination.channelCountMode = "explicit";
+    destination.channelInterpretation = "discrete";
+    console.log(`Destination configured for ${maxChannels} discrete channels`);
+    return maxChannels;
+  } catch (error) {
+    console.warn("Could not configure multi-channel destination:", error);
+    destination.channelCount = AUDIO_CONFIG.FALLBACK_CHANNEL_COUNT;
+    destination.channelCountMode = "explicit";
+    destination.channelInterpretation = "speakers";
+    return AUDIO_CONFIG.FALLBACK_CHANNEL_COUNT;
+  }
+}
+
+function createConfiguredMasterGain(context, masterVolume) {
+  const channelCount = configureAudioDestination(context);
+  const masterGain = context.createGain();
+  
+  masterGain.channelCount = channelCount;
+  masterGain.channelCountMode = "explicit";
+  masterGain.channelInterpretation = "discrete";
+  masterGain.connect(context.destination);
+  
+  if (masterVolume !== undefined) {
+    masterGain.gain.value = masterVolume;
+  }
+  
+  return masterGain;
+}
+
+async function setAudioDeviceUnified(audioElement, context, deviceId) {
+  if (!deviceId) return { audioDeviceSet: false, contextDeviceSet: false };
+  
+  const results = await Promise.allSettled([
+    audioElement?.setSinkId?.(deviceId),
+    context?.setSinkId?.(deviceId)
+  ]);
+  
+  const [audioResult, contextResult] = results;
+  return {
+    audioDeviceSet: audioResult.status === 'fulfilled',
+    contextDeviceSet: contextResult.status === 'fulfilled'
+  };
+}
+
 async function getAudioDevices() {
+  const selectors = document.querySelectorAll(".audio-device-select");
+  
   try {
     if (!navigator.mediaDevices?.enumerateDevices) throw new Error('API not supported');
     
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const audioOutputDevices = devices.filter(device => device.kind === "audiooutput");
+    const options = devices
+      .filter(device => device.kind === "audiooutput")
+      .map((device, index) => 
+        `<option value="${device.deviceId}">${device.label || `Audio Output ${index + 1}`}</option>`
+      ).join('');
     
-    document.querySelectorAll(".audio-device-select").forEach(select => {
-      select.innerHTML = audioOutputDevices
-        .map((device, index) => 
-          `<option value="${device.deviceId}">${device.label || `Audio Output ${index + 1}`}</option>`
-        ).join('');
+    selectors.forEach(select => {
+      select.innerHTML = options;
       select.dispatchEvent(new Event("change"));
     });
   } catch {
-    document.querySelectorAll(".audio-device-select")
-      .forEach(select => select.innerHTML = AUDIO_CONFIG.FALLBACK_OPTIONS);
+    selectors.forEach(select => select.innerHTML = AUDIO_CONFIG.FALLBACK_OPTIONS);
   }
 }
 
 async function updateChannelSelectorsForDevice(track, specificAudioDeviceSelect = null) {
-  const audioDeviceSelects = specificAudioDeviceSelect 
-    ? [specificAudioDeviceSelect] 
-    : track.querySelectorAll(".audio-device-select");
+  const audioDeviceSelects = specificAudioDeviceSelect ? [specificAudioDeviceSelect] : track.querySelectorAll(".audio-device-select");
+  const channelSelects = getChannelSelectors(track);
+  
+  if (channelSelects.length === 0) return;
 
   for (const audioDeviceSelect of audioDeviceSelects) {
-    const channelSelects = getChannelSelectors(track);
-    if (channelSelects.length === 0) continue;
-
     const maxChannels = await getMaxChannelsForDevice(audioDeviceSelect.value);
     updateChannelOptions(channelSelects, maxChannels);
     
-    // Trigger change event if needed
-    const trackIndex = parseInt(track.getAttribute("data-index"));
-    const hasAudioFile = window.audioSources && window.audioSources[trackIndex];
-    
-    channelSelects.forEach(channelSelect => {
-      const currentVal = parseInt(channelSelect.value);
-      if ((!currentVal || currentVal > maxChannels) && hasAudioFile) {
-        channelSelect.dispatchEvent(new Event("change"));
-      }
-    });
+    const { index: trackIndex } = getTrackMetadata(track);
+    if (window.audioSources?.[trackIndex]) {
+      channelSelects.forEach(channelSelect => {
+        const currentVal = parseInt(channelSelect.value);
+        if (!currentVal || currentVal > maxChannels) {
+          channelSelect.dispatchEvent(new Event("change"));
+        }
+      });
+    }
   }
 }
 
 function getChannelSelectors(track) {
-  if (track.classList.contains("video-track")) {
-    return [
-      track.querySelector(`#channel-select-${track.dataset.index}-left`),
-      track.querySelector(`#channel-select-${track.dataset.index}-right`)
-    ].filter(Boolean);
+  const { index, isVideoTrack } = getTrackMetadata(track);
+  
+  if (isVideoTrack) {
+    return [track.querySelector(`#channel-select-${index}-left`), track.querySelector(`#channel-select-${index}-right`)].filter(Boolean);
   } else {
-    const channelSelect = track.querySelector(".channel-select");
-    return channelSelect ? [channelSelect] : [];
+    const selector = track.querySelector(".channel-select");
+    return selector ? [selector] : [];
   }
 }
 
@@ -77,25 +134,22 @@ async function getMaxChannelsForDevice(deviceId) {
 }
 
 function updateChannelOptions(channelSelects, maxChannels) {
+  const options = Array.from({length: maxChannels}, (_, i) => 
+    `<option value="${i + 1}">Channel ${i + 1}</option>`
+  ).join('');
+  
   channelSelects.forEach(channelSelect => {
     const currentVal = parseInt(channelSelect.value);
-    channelSelect.innerHTML = Array.from({length: maxChannels}, (_, i) => 
-      `<option value="${i + 1}">Channel ${i + 1}</option>`
-    ).join('');
-    
-    channelSelect.value = (currentVal && currentVal <= maxChannels) 
-      ? currentVal 
-      : AUDIO_CONFIG.DEFAULT_CHANNEL;
+    channelSelect.innerHTML = options;
+    channelSelect.value = (currentVal && currentVal <= maxChannels) ? currentVal : AUDIO_CONFIG.DEFAULT_CHANNEL;
   });
 }
 
 function setupDeviceChangeListeners(audioElements, audioContextContainer) {
-  const tracks = document.querySelectorAll(".track");
-  tracks.forEach(track => {
-    const index = parseInt(track.getAttribute("data-index"));
-    const audioDeviceSelects = track.querySelectorAll(".audio-device-select");
+  document.querySelectorAll(".track").forEach(track => {
+    const { index } = getTrackMetadata(track);
     
-    audioDeviceSelects.forEach(audioDeviceSelect => {
+    track.querySelectorAll(".audio-device-select").forEach(audioDeviceSelect => {
       audioDeviceSelect.addEventListener("change", async () => {
         await updateChannelSelectorsForDevice(track, audioDeviceSelect);
         await setTrackAudioDevice(index, audioDeviceSelect.value, audioElements, audioContextContainer);
@@ -104,86 +158,29 @@ function setupDeviceChangeListeners(audioElements, audioContextContainer) {
   });
 }
 
-// Simplified device setting
 async function setTrackAudioDevice(trackIndex, deviceId, audioElements, audioContextContainer) {
   const audioElement = audioElements[trackIndex];
   const context = audioContextContainer?.contexts?.[trackIndex];
+  const result = await setAudioDeviceUnified(audioElement, context, deviceId);
   
-  // Try setting device on audio element and context
-  let audioDeviceSet = false;
-  let contextDeviceSet = false;
-  
-  try {
-    if (audioElement?.setSinkId) {
-      await audioElement.setSinkId(deviceId);
-      audioDeviceSet = true;
-    }
-  } catch { /* ignore */ }
-  
-  try {
-    if (context?.setSinkId) {
-      await context.setSinkId(deviceId);
-      contextDeviceSet = true;
-    }
-  } catch { /* ignore */ }
-  
-  // If both failed, recreate context
-  if (!audioDeviceSet && !contextDeviceSet) {
+  if (!result.audioDeviceSet && !result.contextDeviceSet) {
     await recreateAudioContextWithDevice(trackIndex, deviceId, audioElements, audioContextContainer);
   }
   
-  return { audioDeviceSet, contextDeviceSet };
+  return result;
 }
 
-// AudioContext recreation
 async function recreateAudioContextWithDevice(trackIndex, deviceId, audioElements, audioContextContainer) {
   try {
-    // Close existing context
     await audioContextContainer.contexts[trackIndex]?.close();
 
-    // Create new context with device
-    const newContext = await createAudioContextWithDevice(deviceId);
-    const masterGain = createMasterGain(newContext, audioContextContainer.masterVolume);
-
-    // Update containers
+    const newContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (newContext.setSinkId) await newContext.setSinkId(deviceId);
+    
     audioContextContainer.contexts[trackIndex] = newContext;
-    audioContextContainer.masterGains[trackIndex] = masterGain;
-
+    audioContextContainer.masterGains[trackIndex] = createConfiguredMasterGain(newContext, audioContextContainer.masterVolume);
     return true;
   } catch {
     return false;
   }
-}
-
-async function createAudioContextWithDevice(deviceId) {
-  const context = new (window.AudioContext || window.webkitAudioContext)();
-  if (context.setSinkId) await context.setSinkId(deviceId);
-  return context;
-}
-
-function createMasterGain(context, masterVolume) {
-  const destination = context.destination;
-  const maxChannels = destination.maxChannelCount;
-  
-  // Configure destination
-  try {
-    destination.channelCount = maxChannels;
-    destination.channelCountMode = "explicit";
-    destination.channelInterpretation = "discrete";
-  } catch (error) {
-    destination.channelCount = AUDIO_CONFIG.FALLBACK_CHANNEL_COUNT; // Fallback to stereo
-  }
-
-  // Create and configure master gain
-  const masterGain = context.createGain();
-  masterGain.channelCount = destination.channelCount;
-  masterGain.channelCountMode = "explicit";
-  masterGain.channelInterpretation = "discrete";
-  masterGain.connect(destination);
-  
-  if (masterVolume !== undefined) {
-    masterGain.gain.value = masterVolume;
-  }
-  
-  return masterGain;
 }

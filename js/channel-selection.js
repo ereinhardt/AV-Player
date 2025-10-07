@@ -4,86 +4,60 @@ function connectToChannel(gainNode, merger, newChannel, fallbackElement) {
   
   gainNode.disconnect();
   
-  if (newChannel >= 0 && newChannel < merger.numberOfInputs) {
-    try {
-      gainNode.connect(merger, 0, newChannel);
-      return true;
-    } catch (error) {
-      console.warn(`Channel connection failed, falling back to channel 1:`, error);
-    }
-  }
+  // Try to connect to the specified channel, fallback to channel 1 on error
+  const targetChannel = (newChannel >= 0 && newChannel < merger.numberOfInputs) ? newChannel : 0;
   
-  // Fallback to channel 1 (index 0)
-  gainNode.connect(merger, 0, 0);
-  if (fallbackElement) fallbackElement.value = 1;
-  return false;
-}
-
-// Helper function to validate audio source exists
-function validateAudioSource(audioSources, index, trackType) {
-  const audioSource = audioSources[index];
-  if (!audioSource) {
-    alert(`Please add ${trackType === 'video' ? 'a video' : 'an audio'} file to this track first.`);
-    return null;
+  try {
+    gainNode.connect(merger, 0, targetChannel);
+    return targetChannel === newChannel;
+  } catch (error) {
+    console.warn(`Channel connection failed, falling back to channel 1:`, error);
+    gainNode.connect(merger, 0, 0);
+    if (fallbackElement) fallbackElement.value = 1;
+    return false;
   }
-  return audioSource;
 }
 
 // Unified channel change handler
-function handleChannelChange(trackIndex, channelValue, audioSources, options = {}) {
-  const { side, isVideo, fallbackElement } = options;
-  const trackType = isVideo ? 'video' : 'audio';
-  
-  const audioSource = validateAudioSource(audioSources, trackIndex, trackType);
+function handleChannelChange(trackIndex, channelValue, audioSources, side, isVideo, element) {
+  // Validate audio source exists
+  const audioSource = audioSources[trackIndex];
   if (!audioSource) {
-    if (fallbackElement) fallbackElement.value = 1;
+    alert(`Please add ${isVideo ? 'a video' : 'an audio'} file to this track first.`);
+    element.value = 1;
     return;
   }
 
   const newChannel = parseInt(channelValue, 10) - 1;
-
-  if (isVideo) {
-    const { leftGainNode, rightGainNode, merger } = audioSource;
-    const gainNode = side === "left" ? leftGainNode : rightGainNode;
-    
-    if (gainNode && merger) {
-      connectToChannel(gainNode, merger, newChannel, fallbackElement);
-    }
-  } else {
-    const { gainNode, merger } = audioSource;
-    connectToChannel(gainNode, merger, newChannel, fallbackElement);
-  }
+  const { gainNode, leftGainNode, rightGainNode, merger } = audioSource;
+  
+  // Select appropriate gain node
+  const targetGainNode = isVideo ? (side === "left" ? leftGainNode : rightGainNode) : gainNode;
+  
+  connectToChannel(targetGainNode, merger, newChannel, element);
 }
 
 function setupChannelSelection(tracks, audioSources, audioContextContainer) {
-  tracks.forEach((track, arrayIndex) => {
-    const index = parseInt(track.getAttribute("data-index"));
-    const isVideoTrack = track.classList.contains("video-track");
+  tracks.forEach((track) => {
+    const { index, isVideoTrack } = getTrackMetadata(track);
 
     if (isVideoTrack) {
       // Setup stereo channel selectors for video tracks
       ["left", "right"].forEach(side => {
         const channelSelect = track.querySelector(`#channel-select-${index}-${side}`);
         if (channelSelect) {
-          channelSelect.addEventListener("change", (event) => {
-            handleChannelChange(index, event.target.value, audioSources, {
-              side,
-              isVideo: true,
-              fallbackElement: event.target
-            });
-          });
+          channelSelect.addEventListener("change", (event) => 
+            handleChannelChange(index, event.target.value, audioSources, side, true, event.target)
+          );
         }
       });
     } else {
       // Setup single channel selector for audio tracks
       const channelSelect = track.querySelector(".channel-select");
       if (channelSelect) {
-        channelSelect.addEventListener("change", (event) => {
-          handleChannelChange(index, event.target.value, audioSources, {
-            isVideo: false,
-            fallbackElement: event.target
-          });
-        });
+        channelSelect.addEventListener("change", (event) => 
+          handleChannelChange(index, event.target.value, audioSources, null, false, event.target)
+        );
       }
     }
   });

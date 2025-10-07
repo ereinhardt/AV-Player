@@ -225,4 +225,3 @@ const setupVideoTrackHandling = () => {
     });
   });
 };
-

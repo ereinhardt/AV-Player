@@ -42,33 +42,28 @@ class UDPTrigger {
     this.updateStatus();
   }
 
-  getBroadcastIP(localIP = "192.168.1.1") {
-    const parts = localIP.split(".");
-    return parts.length === 4 ? `${parts.slice(0, 3).join(".")}.255` : "192.168.1.255";
-  }
+
 
   connectToServer() {
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    this.ws = new WebSocket(`${wsProtocol}//${window.location.host}`);
-
-    this.ws.onopen = () => this.setConnectionState(true);
-    this.ws.onclose = this.ws.onerror = () => {
-      this.setConnectionState(false);
-      setTimeout(() => this.connectToServer(), 3000);
-    };
-
-    this.ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "udp-trigger-sent") {
-          this.showSentStatus(data.details);
+    this.ws = createWebSocketConnection(
+      () => this.setConnectionState(true),
+      (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "udp-trigger-sent") {
+            this.showSentStatus(data.details);
+          }
+        } catch (e) {
+          // Ignore malformed messages
         }
-      } catch (e) {
-        // Ignore malformed messages
+      },
+      () => {
+        this.setConnectionState(false);
+        setTimeout(() => this.connectToServer(), 3000);
       }
-    };
+    );
   }
 
   setConnectionState(connected) {
@@ -91,7 +86,7 @@ class UDPTrigger {
     this.enabled = enabled.checked;
 
     // Resolve IP based on preset selection
-    this.ip = ipPreset?.value === "auto-broadcast" ? (ip.value.trim() || this.getBroadcastIP()) :
+    this.ip = ipPreset?.value === "auto-broadcast" ? (ip.value.trim() || calculateBroadcastIP()) :
               ipPreset?.value && ipPreset.value !== "custom" ? ipPreset.value :
               ip.value.trim();
 
@@ -104,7 +99,7 @@ class UDPTrigger {
 
   isValid() {
     if (!this.enabled) return true;
-    return this.isValidIP(this.ip) && 
+    return isValidIP(this.ip) && 
            this.port >= 1 && this.port <= 65535 && 
            this.message.length > 0;
   }
@@ -122,10 +117,7 @@ class UDPTrigger {
     this.updateStatus();
   }
 
-  isValidIP(ip) {
-    return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) && 
-           ip.split(".").every(part => parseInt(part) <= 255);
-  }
+
 
   updateStatus() {
     if (!this.elements.status) return;

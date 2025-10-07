@@ -8,17 +8,15 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
   let isLoopRestarting = false;
   let audioWaitingStates = {};
 
-  // Helper functions
   const resetStates = () => {
     audioWaitingStates = {};
     if (window.videoStates) window.videoStates = {};
   };
 
   const sendVideoMessage = (type) => {
-    const message = { type };
     Object.values(window.videoWindows || {}).forEach((videoWindow) => {
       if (videoWindow && !videoWindow.closed) {
-        videoWindow.postMessage(message, window.location.origin);
+        videoWindow.postMessage({ type }, window.location.origin);
       }
     });
   };
@@ -27,14 +25,9 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     audio.tagName === "VIDEO" && 
     (audio.ended || (audio.currentTime >= audio.duration - 0.1 && audio.duration > 0));
 
-  const triggerUDP = (action) => {
-    if (window.udpTrigger) {
-      window.udpTrigger.sendTrigger(action);
-    }
-  };
+  const triggerUDP = (action) => window.udpTrigger?.sendTrigger(action);
 
   const setupLoopHandlers = () => {
-    // Find longest audio
     let maxDuration = 0;
     let currentLongestAudio = null;
 
@@ -45,9 +38,7 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
       }
     });
 
-    // Setup main loop handler
     if (currentLongestAudio && currentLongestAudio !== longestAudio) {
-      // Clean up previous
       if (longestAudio?._loopHandler) {
         longestAudio.removeEventListener("ended", longestAudio._loopHandler);
       }
@@ -61,7 +52,6 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
       longestAudio.addEventListener("ended", longestAudio._loopHandler);
     }
 
-    // Setup waiting handlers for shorter audios
     audioElements.forEach((audio, index) => {
       if (audio && audio !== longestAudio) {
         if (audio._waitingHandler) {
@@ -85,7 +75,6 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     triggerUDP("start");
     if (window.pauseVideoSync) window.pauseVideoSync();
 
-    // Reset all elements
     audioElements.forEach((audio) => {
       if (audio) {
         audio.pause();
@@ -103,7 +92,6 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     resetStates();
     sendVideoMessage("RESTART_VIDEO");
 
-    // Synchronized restart
     setTimeout(() => {
       const playPromises = audioElements
         .filter(audio => audio)
@@ -115,10 +103,7 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
         if (window.resumeVideoSync) window.resumeVideoSync();
       });
     }, 100);
-  };
-
-  // Event listeners
-  document.addEventListener("fileLoaded", setupLoopHandlers);
+  };  document.addEventListener("fileLoaded", setupLoopHandlers);
 
   playPauseButton.addEventListener("click", () => {
     const hasContext = audioContextContainer.contexts?.some(ctx => ctx !== null);
@@ -128,7 +113,6 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
       return;
     }
 
-    // Resume suspended contexts
     audioContextContainer.contexts?.forEach((context, index) => {
       if (context?.state === "suspended") {
         context.resume().catch(error => console.error(`Failed to resume context ${index}:`, error));
