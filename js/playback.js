@@ -126,7 +126,7 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     );
 
     if (!hasContext) {
-      alert("Please add at least one audio file.");
+      alert("Please add at least one file.");
       return;
     }
 
