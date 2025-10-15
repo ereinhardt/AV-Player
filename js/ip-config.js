@@ -4,6 +4,7 @@ async function updateIPFieldForPreset(presetId, ipFieldId) {
   const ipField = document.getElementById(ipFieldId);
 
   if (preset.value === "custom") {
+    ipField.value = "";
     ipField.style.display = "inline-block";
     ipField.focus();
   } else if (preset.value === "auto-broadcast") {

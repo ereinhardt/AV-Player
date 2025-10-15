@@ -53,6 +53,7 @@ class OSCTrigger {
     if (!dataType || !value) return;
 
     const isNumeric = dataType.value === "float" || dataType.value === "integer";
+    const wasNumeric = value.type === "number";
     
     value.type = isNumeric ? "number" : "text";
     
@@ -67,7 +68,10 @@ class OSCTrigger {
     } else {
       ["min", "max", "step"].forEach(attr => value.removeAttribute(attr));
       value.placeholder = "Enter text";
-      if (!value.value) value.value = "START";
+      // Set to "START" if empty or switching from numeric type
+      if (!value.value || wasNumeric) {
+        value.value = "START";
+      }
     }
   }
 
