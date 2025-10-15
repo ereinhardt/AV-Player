@@ -24,6 +24,14 @@ class IntegratedArtNetServer {
     this.udpPort = 9998;
     this.udpMessage = "START";
 
+    // OSC Trigger config
+    this.oscEnabled = false;
+    this.oscIP = "127.0.0.1";
+    this.oscPort = 7000;
+    this.oscAddress = "/trigger/start";
+    this.oscDataType = "float";
+    this.oscValue = 1.0;
+
     // Static files
     this.app.use(express.static(__dirname));
     this.app.get("/", (req, res) =>
@@ -34,6 +42,8 @@ class IntegratedArtNetServer {
     this.udpSocket = dgram.createSocket("udp4");
     this.udpTriggerSocket = dgram.createSocket("udp4");
     this.udpTriggerSocket.bind(() => this.udpTriggerSocket.setBroadcast(true));
+    this.oscTriggerSocket = dgram.createSocket("udp4");
+    this.oscTriggerSocket.bind(() => this.oscTriggerSocket.setBroadcast(true));
 
     this.setupWebSocket();
   }
@@ -73,6 +83,8 @@ class IntegratedArtNetServer {
       "configure-artnet": this.configureArtNet,
       "udp-trigger-config": this.configureUDP,
       "udp-trigger-send": this.sendUDP,
+      "osc-trigger-config": this.configureOSC,
+      "osc-trigger-send": this.sendOSC,
     };
 
     const handler = handlers[data.type];
@@ -164,6 +176,116 @@ class IntegratedArtNetServer {
     });
   }
 
+  // Configure OSC trigger settings (IP, port, address, data type, value, enabled state)
+  configureOSC(data, ws) {
+    const { enabled, ip, port, oscAddress, dataType, value } = data;
+
+    if (typeof enabled === "boolean") this.oscEnabled = enabled;
+    if (ip?.trim()) this.oscIP = ip.trim();
+    if (port && port >= 1 && port <= 65535) this.oscPort = port;
+    if (oscAddress?.trim() && oscAddress.startsWith("/"))
+      this.oscAddress = oscAddress.trim();
+    if (dataType && ["float", "integer", "string"].includes(dataType))
+      this.oscDataType = dataType;
+    if (value !== undefined) this.oscValue = value;
+
+    this.send(ws, "osc-trigger-config-updated", "OSC config updated", {
+      config: {
+        enabled: this.oscEnabled,
+        ip: this.oscIP,
+        port: this.oscPort,
+        oscAddress: this.oscAddress,
+        dataType: this.oscDataType,
+        value: this.oscValue,
+      },
+    });
+  }
+
+  // Encode OSC message according to OSC 1.0 specification
+  encodeOSCMessage(address, dataType, value) {
+    const buffers = [];
+
+    // Encode OSC address with null terminator and padding
+    const addressBuffer = Buffer.from(address + "\0");
+    const addressPadding = 4 - (addressBuffer.length % 4);
+    const paddedAddress = Buffer.concat([
+      addressBuffer,
+      Buffer.alloc(addressPadding === 4 ? 0 : addressPadding),
+    ]);
+    buffers.push(paddedAddress);
+
+    // Encode type tag string
+    let typeTag = ",";
+    if (dataType === "float") typeTag += "f";
+    else if (dataType === "integer") typeTag += "i";
+    else if (dataType === "string") typeTag += "s";
+
+    const typeTagBuffer = Buffer.from(typeTag + "\0");
+    const typeTagPadding = 4 - (typeTagBuffer.length % 4);
+    const paddedTypeTag = Buffer.concat([
+      typeTagBuffer,
+      Buffer.alloc(typeTagPadding === 4 ? 0 : typeTagPadding),
+    ]);
+    buffers.push(paddedTypeTag);
+
+    // Encode argument based on type
+    if (dataType === "float") {
+      const floatBuffer = Buffer.alloc(4);
+      floatBuffer.writeFloatBE(parseFloat(value), 0);
+      buffers.push(floatBuffer);
+    } else if (dataType === "integer") {
+      const intBuffer = Buffer.alloc(4);
+      intBuffer.writeInt32BE(parseInt(value), 0);
+      buffers.push(intBuffer);
+    } else if (dataType === "string") {
+      const stringValue = String(value);
+      const stringBuffer = Buffer.from(stringValue + "\0");
+      const stringPadding = 4 - (stringBuffer.length % 4);
+      const paddedString = Buffer.concat([
+        stringBuffer,
+        Buffer.alloc(stringPadding === 4 ? 0 : stringPadding),
+      ]);
+      buffers.push(paddedString);
+    }
+
+    return Buffer.concat(buffers);
+  }
+
+  // Send OSC trigger message to configured target
+  sendOSC(data, ws) {
+    if (!this.oscEnabled) {
+      this.send(ws, "osc-trigger-error", "OSC Trigger is disabled");
+      return;
+    }
+
+    const oscBuffer = this.encodeOSCMessage(
+      this.oscAddress,
+      this.oscDataType,
+      this.oscValue
+    );
+
+    this.oscTriggerSocket.send(oscBuffer, this.oscPort, this.oscIP, (error) => {
+      const messageType = error ? "osc-trigger-error" : "osc-trigger-sent";
+      const messageText = error
+        ? `OSC send failed: ${error.message}`
+        : `OSC message sent`;
+      const extraData = error
+        ? {}
+        : {
+            details: {
+              oscAddress: this.oscAddress,
+              value: this.oscValue,
+              dataType: this.oscDataType,
+              ip: this.oscIP,
+              port: this.oscPort,
+              action: data.action,
+            },
+          };
+
+      this.send(ws, messageType, messageText, extraData);
+    });
+  }
+
   // Start the HTTP server on specified port
   start(port = 3001) {
     this.server.listen(port, () => {
@@ -176,6 +298,7 @@ class IntegratedArtNetServer {
     this.wss.close();
     this.udpSocket.close();
     this.udpTriggerSocket.close();
+    this.oscTriggerSocket.close();
     this.server.close();
   }
 }

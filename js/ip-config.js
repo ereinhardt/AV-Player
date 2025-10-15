@@ -29,12 +29,15 @@ const updateIPField = () =>
 // Update UDP trigger IP field based on preset selection
 const updateUDPIPField = () =>
   updateIPFieldForPreset("udp-trigger-ip-preset", "udp-trigger-ip");
+// Update OSC trigger IP field based on preset selection
+const updateOSCIPField = () =>
+  updateIPFieldForPreset("osc-trigger-ip-preset", "osc-trigger-ip");
 
 // Initialize IP configuration with broadcast detection and update presets
 async function initializeIPConfiguration() {
   const broadcastIP = await getCurrentNetworkBroadcast();
 
-  ["artnet-ip-preset", "udp-trigger-ip-preset"].forEach((presetId) => {
+  ["artnet-ip-preset", "udp-trigger-ip-preset", "osc-trigger-ip-preset"].forEach((presetId) => {
     const preset = document.getElementById(presetId);
     const autoBroadcastOption = preset?.querySelector(
       'option[value="auto-broadcast"]'
@@ -46,6 +49,7 @@ async function initializeIPConfiguration() {
 
   updateIPField();
   updateUDPIPField();
+  updateOSCIPField();
 }
 
 document.addEventListener("DOMContentLoaded", initializeIPConfiguration);

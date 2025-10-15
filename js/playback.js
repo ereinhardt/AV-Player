@@ -33,6 +33,9 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
   // Send UDP trigger message if available
   const triggerUDP = (action) => window.udpTrigger?.sendTrigger(action);
 
+  // Send OSC trigger message if available
+  const triggerOSC = (action) => window.oscTrigger?.sendTrigger(action);
+
   // Set up loop handlers for longest audio track and sync shorter tracks
   const setupLoopHandlers = () => {
     let maxDuration = 0;
@@ -81,6 +84,7 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     isLoopRestarting = true;
     window.isLoopRestarting = true;
     triggerUDP("start");
+    triggerOSC("start");
     if (window.pauseVideoSync) window.pauseVideoSync();
 
     audioElements.forEach((audio) => {

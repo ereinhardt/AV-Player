@@ -1,6 +1,7 @@
 .controls,
 .artnet-settings,
-.udp-trigger-settings {
+.udp-trigger-settings,
+.osc-trigger-settings {
   border: 1px solid silver;
   padding: 1rem;
   margin-bottom: 1rem;
@@ -13,7 +14,8 @@
 
 .controls-title,
 .artnet-title,
-.udp-trigger-title {
+.udp-trigger-title,
+.osc-trigger-title {
   margin-bottom: 0.5rem;
   font-weight: bold;
 }
@@ -38,14 +40,16 @@
 }
 
 #artnet-ip,
-#udp-trigger-ip {
+#udp-trigger-ip,
+#osc-trigger-ip {
   display: none;
   margin-left: 0.5rem;
   width: 150px;
 }
 
 #artnet-ip-preset,
-#udp-trigger-ip-preset {
+#udp-trigger-ip-preset,
+#osc-trigger-ip-preset {
   min-width: 200px;
 }
 
@@ -87,8 +91,7 @@
   gap: 0.25rem;
 }
 
-.file-input,
-.video-window-btn {
+.file-input {
   display: none;
 }
 
@@ -142,20 +145,23 @@
 }
 
 .artnet-status,
-.udp-trigger-status {
+.udp-trigger-status,
+.osc-trigger-status {
   color: #000;
   font-weight: normal;
   margin-left: 0.5rem;
 }
 
 .artnet-status.connected,
-.udp-trigger-status.enabled {
+.udp-trigger-status.enabled,
+.osc-trigger-status.enabled {
   color: #00ff00;
   font-weight: 500;
 }
 
 .artnet-status.error,
-.udp-trigger-status.error {
+.udp-trigger-status.error,
+.osc-trigger-status.error {
   color: #ff0000;
 }
 

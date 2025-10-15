@@ -92,6 +92,45 @@
                 <button id="udp-trigger-apply" class="apply-settings-btn">Apply Settings</button>
             </div>
         </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) Settings: <span id="osc-trigger-status" class="osc-trigger-status">(127.0.0.1:7000 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled">
+                <label for="osc-trigger-enabled">Enable OSC Trigger</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip">IP Address:</label>
+                <select id="osc-trigger-ip-preset" onchange="updateOSCIPField()">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port">Port:</label>
+                <input type="number" id="osc-trigger-port" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address">OSC Address:</label>
+                <input type="text" id="osc-trigger-address" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype">Data Type:</label>
+                <select id="osc-trigger-datatype">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value">Value:</label>
+                <input type="number" id="osc-trigger-value" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
         <div id="track-list">
             <div class="track" data-index="0">
                 <div class="track-info">
@@ -100,6 +139,7 @@
                         <input type="file" id="file-input-0" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-0').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="0">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -131,6 +171,7 @@
                         <input type="file" id="file-input-1" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-1').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="1">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -162,6 +203,7 @@
                         <input type="file" id="file-input-2" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-2').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="2">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -193,6 +235,7 @@
                         <input type="file" id="file-input-3" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-3').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="3">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -224,6 +267,7 @@
                         <input type="file" id="file-input-4" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-4').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="4">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -255,6 +299,7 @@
                         <input type="file" id="file-input-5" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-5').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="5">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -286,6 +331,7 @@
                         <input type="file" id="file-input-6" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-6').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="6">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -317,6 +363,7 @@
                         <input type="file" id="file-input-7" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-7').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="7">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -348,6 +395,7 @@
                         <input type="file" id="file-input-8" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-8').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="8">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -379,6 +427,7 @@
                         <input type="file" id="file-input-9" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-9').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="9">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -410,6 +459,7 @@
                         <input type="file" id="file-input-10" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-10').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="10">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -441,6 +491,7 @@
                         <input type="file" id="file-input-11" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-11').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="11">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -472,6 +523,7 @@
                         <input type="file" id="file-input-12" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-12').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="12">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -503,6 +555,7 @@
                         <input type="file" id="file-input-13" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-13').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="13">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -534,6 +587,7 @@
                         <input type="file" id="file-input-14" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-14').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="14">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -565,6 +619,7 @@
                         <input type="file" id="file-input-15" class="file-input" accept="audio/mp3, audio/wav">
                         <button class="upload-btn" onclick="document.getElementById('file-input-15').click()">Add Audio</button>
                         <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="15">Remove</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -597,6 +652,7 @@
                         <input type="file" id="file-input-16" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-16').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="16">Remove</button>
                         <button id="video-window-btn-16" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -642,6 +698,7 @@
                         <input type="file" id="file-input-17" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-17').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="17">Remove</button>
                         <button id="video-window-btn-17" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -687,6 +744,7 @@
                         <input type="file" id="file-input-18" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-18').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="18">Remove</button>
                         <button id="video-window-btn-18" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -732,6 +790,7 @@
                         <input type="file" id="file-input-19" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-19').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="19">Remove</button>
                         <button id="video-window-btn-19" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -777,6 +836,7 @@
                         <input type="file" id="file-input-20" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-20').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="20">Remove</button>
                         <button id="video-window-btn-20" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -822,6 +882,7 @@
                         <input type="file" id="file-input-21" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-21').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="21">Remove</button>
                         <button id="video-window-btn-21" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -867,6 +928,7 @@
                         <input type="file" id="file-input-22" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-22').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="22">Remove</button>
                         <button id="video-window-btn-22" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -912,6 +974,7 @@
                         <input type="file" id="file-input-23" class="file-input" accept="video/mp4">
                         <button class="upload-btn" onclick="document.getElementById('file-input-23').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
+                        <button class="remove-btn" data-track-index="23">Remove</button>
                         <button id="video-window-btn-23" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
@@ -955,12 +1018,14 @@
     <script src="js/audio-device.js"></script>
     <script src="js/video-tab.js"></script>
     <script src="js/file-handling.js"></script>
+    <script src="js/file-remove.js"></script>
     <script src="js/channel-selection.js"></script>
     <script src="js/playback.js"></script>
     <script src="js/volume.js"></script>
     <script src="js/master-volume.js"></script>
     <script src="js/artnet-timecode.js"></script>
     <script src="js/udp-trigger.js"></script>
+    <script src="js/osc-trigger.js"></script>
     <script src="js/master-timeline.js"></script>
     <script src="js/ip-config.js"></script>
     <script src="js/main.js"></script>

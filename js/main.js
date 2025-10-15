@@ -137,6 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupVolumeControls(tracks, audioSources);
   setupMasterVolumeControl(audioContextContainer);
   setupMasterTimeline(audioElements);
+  setupRemoveButtons(audioElements, audioSources, audioContextContainer);
 
   loopCheckbox.addEventListener("change", () => {
     if (typeof updateVideoLoopStatus === "function") {
