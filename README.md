@@ -23,7 +23,7 @@ node server.js
 
 ## Debug:
 
-- In the `debug` folder, there is a TouchDesigner patch for receiving Art-Net-Timecode (`HH:MM:SS:FF`) and UDP-Trigger messages in the current network.
+- In the `debug` folder, there is a TouchDesigner patch for receiving Art-Net-Timecode (`HH:MM:SS:FF`), UDP- and OSC-Trigger messages in the current network.
 - It folder also contains test video and audio material.
 
 ## Known Bugs (TODO):
