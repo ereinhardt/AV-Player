@@ -68,6 +68,6 @@ function setupMasterTimeline(audioElements) {
     }
   };
 
-  setInterval(updateMasterTimeline, 250);
+  setInterval(updateMasterTimeline, 50);
   document.addEventListener("fileLoaded", updateMasterTimeline);
 }

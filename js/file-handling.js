@@ -59,7 +59,8 @@ function setupTimelineHandlers(audio, timelineProgress, timeDisplay) {
     document.dispatchEvent(new Event("fileLoaded"));
   });
 
-  audio.addEventListener("timeupdate", () => {
+  // Use interval for smoother progress bar updates (50ms = 20fps)
+  const updateInterval = setInterval(() => {
     if (audio.duration && isFinite(audio.duration)) {
       timelineProgress.value = (audio.currentTime / audio.duration) * 100;
       timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
@@ -67,7 +68,10 @@ function setupTimelineHandlers(audio, timelineProgress, timeDisplay) {
       timelineProgress.value = 0;
       timeDisplay.textContent = `00:00:00 / 00:00:00`;
     }
-  });
+  }, 50);
+
+  // Store interval ID for cleanup
+  audio._timelineUpdateInterval = updateInterval;
 }
 
 function setupFileHandling(tracks, audioElements, audioSources, audioContextContainer, loopCheckbox) {
@@ -185,6 +189,11 @@ function removeFileFromTrack(index, audioElements, audioSources, audioContextCon
     audioElements[index].currentTime = 0;
     if (audioElements[index].src?.startsWith("blob:")) {
       URL.revokeObjectURL(audioElements[index].src);
+    }
+    // Clear timeline update interval
+    if (audioElements[index]._timelineUpdateInterval) {
+      clearInterval(audioElements[index]._timelineUpdateInterval);
+      audioElements[index]._timelineUpdateInterval = null;
     }
     audioElements[index].src = "";
     audioElements[index] = null;
