@@ -40,15 +40,6 @@
                 <label for="artnet-enabled">Enable Art-Net Timecode</label>
             </div>
             <div class="setting-group">
-                <label for="fps-select">FPS:</label>
-                <select id="fps-select">
-                    <option value="24">24 fps</option>
-                    <option value="25" selected>25 fps</option>
-                    <option value="29.97">29.97 fps</option>
-                    <option value="30">30 fps</option>
-                </select>
-            </div>
-            <div class="setting-group">
                 <label for="artnet-ip">IP Address:</label>
                 <select id="artnet-ip-preset" onchange="updateIPField()">
                     <option value="127.0.0.1">Localhost (127.0.0.1)</option>
@@ -60,6 +51,15 @@
             <div class="setting-group">
                 <label for="artnet-port">Port:</label>
                 <input type="number" id="artnet-port" min="1" max="65535" value="6457" title="Art-Net UDP port (for real Art-Net devices). Debug WebSocket stays on 8080.">
+            </div>
+            <div class="setting-group">
+                <label for="fps-select">FPS:</label>
+                <select id="fps-select">
+                    <option value="24">24 fps</option>
+                    <option value="25" selected>25 fps</option>
+                    <option value="29.97">29.97 fps</option>
+                    <option value="30">30 fps</option>
+                </select>
             </div>
             <div class="setting-group">
                 <button id="apply-settings-btn" class="apply-settings-btn">Apply Settings</button>
