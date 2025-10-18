@@ -44,13 +44,6 @@
 #osc-trigger-ip {
   display: none;
   margin-left: 0.5rem;
-  width: 150px;
-}
-
-#artnet-ip-preset,
-#udp-trigger-ip-preset,
-#osc-trigger-ip-preset {
-  min-width: 200px;
 }
 
 .setting-group {
@@ -96,12 +89,10 @@
 }
 
 .device-label {
-  min-width: 85px;
   white-space: nowrap;
 }
 
 .channel-label {
-  min-width: 70px;
   white-space: nowrap;
 }
 
