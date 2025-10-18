@@ -5,6 +5,7 @@ class UDPTrigger {
     this.ip = "127.0.0.1";
     this.port = 9998;
     this.message = "START";
+    this.triggerTime = 0; // Trigger time in seconds
     this.ws = null;
     this.isConnected = false;
     this.reconnectTimer = null;
@@ -14,6 +15,7 @@ class UDPTrigger {
       ip: document.getElementById("udp-trigger-ip"),
       port: document.getElementById("udp-trigger-port"),
       message: document.getElementById("udp-trigger-message"),
+      time: document.getElementById("udp-trigger-time"),
       ipPreset: document.getElementById("udp-trigger-ip-preset"),
       apply: document.getElementById("udp-trigger-apply"),
       status: document.getElementById("udp-trigger-status"),
@@ -25,12 +27,13 @@ class UDPTrigger {
 
   // Set up UI elements and event listeners
   setupUI() {
-    const { enabled, ip, port, message, ipPreset, apply } = this.elements;
+    const { enabled, ip, port, message, time, ipPreset, apply } = this.elements;
 
     if (enabled) enabled.checked = this.enabled;
     if (ip) ip.value = this.ip;
     if (port) port.value = this.port;
     if (message) message.value = this.message;
+    if (time) time.value = this.formatTime(this.triggerTime);
     if (ipPreset) ipPreset.value = "127.0.0.1";
 
     enabled?.addEventListener("change", () => {
@@ -111,19 +114,21 @@ class UDPTrigger {
   showSentStatus(details) {
     if (!this.elements.status) return;
 
-    this.elements.status.textContent = `(${details.ip}:${details.port} / ${details.message} - SENT)`;
+    const timeStr = this.formatTime(this.triggerTime || 0);
+    this.elements.status.textContent = `(${details.ip}:${details.port} / ${timeStr} / ${details.message} - SENT)`;
     this.elements.status.className = "udp-trigger-status enabled";
     setTimeout(() => this.updateStatus(), 2000);
   }
 
   // Apply and validate settings from UI inputs
   applySettings() {
-    const { enabled, ipPreset, ip, port, message } = this.elements;
+    const { enabled, ipPreset, ip, port, message, time } = this.elements;
     if (!enabled || !ip || !port || !message) return;
 
     this.enabled = enabled.checked;
     this.port = parseInt(port.value);
     this.message = message.value.trim();
+    this.triggerTime = time ? this.parseTime(time.value) : 0;
 
     // Resolve IP based on preset selection
     this.ip =
@@ -134,6 +139,7 @@ class UDPTrigger {
         : ip.value.trim();
 
     ip.value = this.ip; // Update display
+    if (time) time.value = this.formatTime(this.triggerTime);
     if (this.isValid()) this.sendConfigToServer();
   }
 
@@ -173,7 +179,8 @@ class UDPTrigger {
       : this.enabled
       ? "enabled"
       : "disabled";
-    this.elements.status.textContent = `(${this.ip}:${this.port} / ${this.message})`;
+    const timeStr = this.formatTime(this.triggerTime || 0);
+    this.elements.status.textContent = `(${this.ip}:${this.port} / ${timeStr} / ${this.message})`;
     this.elements.status.className = `udp-trigger-status ${statusClass}`;
   }
 
@@ -196,6 +203,21 @@ class UDPTrigger {
         message,
       })
     );
+  }
+
+  // Parse time string (HH:MM:SS) to seconds
+  parseTime(timeStr) {
+    const parts = timeStr.split(':').map(p => parseInt(p) || 0);
+    if (parts.length !== 3) return 0;
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+
+  // Format seconds to time string (HH:MM:SS)
+  formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   // Clean up all resources and remove event listeners

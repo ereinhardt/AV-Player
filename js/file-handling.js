@@ -60,8 +60,13 @@ function setupTimelineHandlers(audio, timelineProgress, timeDisplay) {
   });
 
   audio.addEventListener("timeupdate", () => {
-    timelineProgress.value = (audio.currentTime / audio.duration) * 100;
-    timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+    if (audio.duration && isFinite(audio.duration)) {
+      timelineProgress.value = (audio.currentTime / audio.duration) * 100;
+      timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+    } else {
+      timelineProgress.value = 0;
+      timeDisplay.textContent = `${formatTime(audio.currentTime)} / --:--:--`;
+    }
   });
 }
 

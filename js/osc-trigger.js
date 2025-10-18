@@ -6,6 +6,7 @@ class OSCTrigger {
     this.oscAddress = "/trigger/start";
     this.dataType = "float";
     this.value = 1.0;
+    this.triggerTime = 0; // Trigger time in seconds
     this.ws = null;
     this.isConnected = false;
     this.reconnectTimer = null;
@@ -17,6 +18,7 @@ class OSCTrigger {
       oscAddress: document.getElementById("osc-trigger-address"),
       dataType: document.getElementById("osc-trigger-datatype"),
       value: document.getElementById("osc-trigger-value"),
+      time: document.getElementById("osc-trigger-time"),
       ipPreset: document.getElementById("osc-trigger-ip-preset"),
       apply: document.getElementById("osc-trigger-apply"),
       status: document.getElementById("osc-trigger-status"),
@@ -27,7 +29,7 @@ class OSCTrigger {
   }
 
   setupUI() {
-    const { enabled, ip, port, oscAddress, dataType, value, ipPreset, apply } = this.elements;
+    const { enabled, ip, port, oscAddress, dataType, value, time, ipPreset, apply } = this.elements;
 
     if (enabled) enabled.checked = this.enabled;
     if (ip) ip.value = this.ip;
@@ -35,6 +37,7 @@ class OSCTrigger {
     if (oscAddress) oscAddress.value = this.oscAddress;
     if (dataType) dataType.value = this.dataType;
     if (value) value.value = this.value;
+    if (time) time.value = this.formatTime(this.triggerTime);
     if (ipPreset) ipPreset.value = "127.0.0.1";
 
     enabled?.addEventListener("change", () => {
@@ -124,20 +127,22 @@ class OSCTrigger {
     const valueDisplay = details.dataType === "float" && typeof details.value === "number"
       ? details.value.toFixed(2)
       : details.value;
+    const timeStr = this.formatTime(this.triggerTime || 0);
     
-    this.elements.status.textContent = `(${details.ip}:${details.port} / ${details.oscAddress} ${typeTag} ${valueDisplay} - SENT)`;
+    this.elements.status.textContent = `(${details.ip}:${details.port} / ${timeStr} / ${details.oscAddress} ${typeTag} ${valueDisplay} - SENT)`;
     this.elements.status.className = "osc-trigger-status enabled";
     setTimeout(() => this.updateStatus(), 2000);
   }
 
   applySettings() {
-    const { enabled, ipPreset, ip, port, oscAddress, dataType, value } = this.elements;
+    const { enabled, ipPreset, ip, port, oscAddress, dataType, value, time } = this.elements;
     if (!enabled || !ip || !port || !oscAddress || !dataType || !value) return;
 
     this.enabled = enabled.checked;
     this.port = parseInt(port.value);
     this.oscAddress = oscAddress.value.trim();
     this.dataType = dataType.value;
+    this.triggerTime = time ? this.parseTime(time.value) : 0;
 
     // Parse value based on data type
     if (this.dataType === "float") {
@@ -160,6 +165,7 @@ class OSCTrigger {
       : ip.value.trim();
 
     ip.value = this.ip;
+    if (time) time.value = this.formatTime(this.triggerTime);
     if (this.isValid()) this.sendConfigToServer();
   }
 
@@ -199,8 +205,9 @@ class OSCTrigger {
     const valueDisplay = this.dataType === "float" && typeof this.value === "number"
       ? this.value.toFixed(2)
       : this.value;
+    const timeStr = this.formatTime(this.triggerTime || 0);
 
-    this.elements.status.textContent = `(${this.ip}:${this.port} / ${this.oscAddress || "(empty)"} ${typeTag} ${valueDisplay})`;
+    this.elements.status.textContent = `(${this.ip}:${this.port} / ${timeStr} / ${this.oscAddress || "(empty)"} ${typeTag} ${valueDisplay})`;
     this.elements.status.className = `osc-trigger-status ${statusClass}`;
   }
 
@@ -216,6 +223,21 @@ class OSCTrigger {
       dataType: this.dataType,
       value: this.value,
     }));
+  }
+
+  // Parse time string (HH:MM:SS) to seconds
+  parseTime(timeStr) {
+    const parts = timeStr.split(':').map(p => parseInt(p) || 0);
+    if (parts.length !== 3) return 0;
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+
+  // Format seconds to time string (HH:MM:SS)
+  formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   destroy() {

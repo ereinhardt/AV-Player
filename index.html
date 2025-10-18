@@ -85,6 +85,10 @@
                 <input type="number" id="udp-trigger-port" min="1" max="65535" value="9998" title="UDP port for trigger messages">
             </div>
             <div class="setting-group">
+                <label for="udp-trigger-time">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent (e.g., 00:00:00 for loop start, 00:00:59 for loop end)">
+            </div>
+            <div class="setting-group">
                 <label for="udp-trigger-message">Message:</label>
                 <input type="text" id="udp-trigger-message" placeholder="START" value="START" title="Message to send (e.g., START/STOP)">
             </div>
@@ -110,6 +114,10 @@
             <div class="setting-group">
                 <label for="osc-trigger-port">Port:</label>
                 <input type="number" id="osc-trigger-port" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent (e.g., 00:00:00 for loop start, 00:00:59 for loop end)">
             </div>
             <div class="setting-group">
                 <label for="osc-trigger-address">OSC Address:</label>
@@ -1018,7 +1026,6 @@
     <script src="js/audio-device.js"></script>
     <script src="js/video-tab.js"></script>
     <script src="js/file-handling.js"></script>
-    <script src="js/file-remove.js"></script>
     <script src="js/channel-selection.js"></script>
     <script src="js/playback.js"></script>
     <script src="js/volume.js"></script>

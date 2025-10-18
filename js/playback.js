@@ -83,8 +83,6 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
   const restartAll = () => {
     isLoopRestarting = true;
     window.isLoopRestarting = true;
-    triggerUDP("start");
-    triggerOSC("start");
     if (window.pauseVideoSync) window.pauseVideoSync();
 
     audioElements.forEach((audio) => {
