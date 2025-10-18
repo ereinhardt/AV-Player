@@ -60,15 +60,7 @@ function setupMasterTimeline(audioElements) {
       }
 
       if (currentTime > 0 && window.artNetTimecode?.sendTimecode) {
-        const timecode = window.artNetTimecode.sendTimecode(
-          currentTime,
-          duration
-        );
-        if (timecode) {
-          console.debug(
-            `Art-Net: ${timecode.formatted} → ${window.artNetTimecode.ip}:${window.artNetTimecode.port}`
-          );
-        }
+        window.artNetTimecode.sendTimecode(currentTime, duration);
       }
     } else {
       timeDisplay.textContent = "00:00:00 / 00:00:00";
