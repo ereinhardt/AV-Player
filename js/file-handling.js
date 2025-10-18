@@ -65,7 +65,7 @@ function setupTimelineHandlers(audio, timelineProgress, timeDisplay) {
       timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
     } else {
       timelineProgress.value = 0;
-      timeDisplay.textContent = `${formatTime(audio.currentTime)} / --:--:--`;
+      timeDisplay.textContent = `00:00:00 / 00:00:00`;
     }
   });
 }
