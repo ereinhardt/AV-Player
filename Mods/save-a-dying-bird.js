@@ -8,7 +8,7 @@ function initializeDyingBirdMod() {
   const MAX_DB = 10;
   const INTERVAL = 1000;
   const FPS = 30;
-  const UDP_IP = "0.0.0.0";  // Which Server IP to listen on (0.0.0.0 = all, or specific Server IP like "192.168.178.47")
+  const UDP_IP = "0.0.0.0";  // Which Server IP to listen on (0.0.0.0 = all, or specific Destination IP (my current IP) like "192.168.178.47")
   const UDP_PORT = 3044; 
 
   // STATE
