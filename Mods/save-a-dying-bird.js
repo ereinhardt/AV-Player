@@ -1,186 +1,180 @@
-function initializeDyingBirdMod() {
-  // Configuration:
-  const MIN_DB = -10; // in dB
-  const MAX_DB = 10; // in dB
-  const INTERVAL = 1000; // in ms
-  const FPS = 30;
+  // Can read UDP messages with binary float values (32-bit and 64-bit) -> see server.js
 
+
+function initializeDyingBirdMod() {
+
+  // CONFIGURATION
+  const MIN_DB = -10;
+  const MAX_DB = 10;
+  const INTERVAL = 1000;
+  const FPS = 30;
+  const UDP_IP = "0.0.0.0";  // Which Server IP to listen on (0.0.0.0 = all, or specific Server IP like "192.168.178.47")
+  const UDP_PORT = 3044; 
+
+  // STATE
   let isEnabled = false;
-  let intervalId = null;
   let animationFrameId = null;
   let lastFrameTime = 0;
+  let udpSocket = null;
+  let lastUdpValue = null;
   const channelStates = new Map();
 
-  // Utility functions
+  // UTILITIES
   const dbToVolume = (db) => Math.pow(10, db / 20);
   const getRandomDb = () => Math.random() * (MAX_DB - MIN_DB) + MIN_DB;
-  const getChannelKey = (index, side) => `${index}-${side || "main"}`;
-  const getSuffix = (side) => (side ? `-${side}` : "");
   const lerp = (start, end, t) => start + (end - start) * t;
 
-  // Get current dB from gain node
-  const getCurrentDb = (gainNode) => {
-    if (!gainNode) return 0;
-    const vol = gainNode.gain.value;
-    return vol > 0 ? 20 * Math.log10(vol) : -60;
-  };
+  const getCurrentDb = (gainNode) => gainNode?.gain.value > 0 
+    ? 20 * Math.log10(gainNode.gain.value) : -60;
 
-  // Check if muted
-  const isMuted = (index, side) => {
-    const cb = document.querySelector(
-      `#mute-checkbox-${index}${getSuffix(side)}`
-    );
-    return cb?.checked || false;
-  };
+  const getElement = (index, side, type) => 
+    document.querySelector(`#${type}-${index}${side ? `-${side}` : ""}`);
 
-  // Update UI
+  const isMuted = (index, side) => getElement(index, side, "mute-checkbox")?.checked || false;
+
   const updateUI = (index, side, db) => {
-    const suffix = getSuffix(side);
-    const slider = document.querySelector(`#volume-slider-${index}${suffix}`);
-    const display = document.querySelector(`#volume-db-${index}${suffix}`);
-    if (slider && display) {
-      slider.value = db.toFixed(1);
-      display.textContent = `${db.toFixed(1)} dB`;
-    }
+    const slider = getElement(index, side, "volume-slider");
+    const display = getElement(index, side, "volume-db");
+    if (slider) slider.value = db.toFixed(1);
+    if (display) display.textContent = `${db.toFixed(1)} dB`;
   };
 
-  // Toggle slider state for all channels
   const setSliderState = (disabled) => {
     window.audioSources?.forEach((_, index) => {
       [null, "left", "right"].forEach((side) => {
-        const slider = document.querySelector(
-          `#volume-slider-${index}${getSuffix(side)}`
-        );
-        if (slider) {
-          slider.disabled = disabled || (side && isMuted(index, side));
-        }
+        const slider = getElement(index, side, "volume-slider");
+        if (slider) slider.disabled = disabled || (side && isMuted(index, side));
       });
     });
   };
 
-  // Process a single channel (generic handler)
+  // CHANNEL PROCESSING
   const processChannel = (gainNode, index, side, now, isAnimating) => {
     if (!gainNode || isMuted(index, side)) return;
 
-    const key = getChannelKey(index, side);
+    const key = `${index}-${side || "main"}`;
     const state = channelStates.get(key);
 
-    if (isAnimating) {
-      // Animation: interpolate current value (only if state exists)
-      if (state) {
-        const progress = Math.min((now - state.startTime) / state.duration, 1);
-        const currentDb = lerp(state.startDb, state.targetDb, progress);
-        gainNode.gain.value = dbToVolume(currentDb);
-        updateUI(index, side, currentDb);
-      }
-    } else {
-      // Randomize: set new target
+    if (isAnimating && state) {
+      const progress = Math.min((now - state.startTime) / INTERVAL, 1);
+      const currentDb = lerp(state.startDb, state.targetDb, progress);
+      gainNode.gain.value = dbToVolume(currentDb);
+      updateUI(index, side, currentDb);
+    } else if (!isAnimating) {
       channelStates.set(key, {
         startDb: getCurrentDb(gainNode),
         targetDb: getRandomDb(),
         startTime: now,
-        duration: INTERVAL,
       });
     }
   };
 
-  // Animation loop for smooth transitions
+  const processAllChannels = (src, index, now, isAnimating) => {
+    if (!src) return;
+    processChannel(src.gainNode, index, null, now, isAnimating);
+    processChannel(src.leftGainNode, index, "left", now, isAnimating);
+    processChannel(src.rightGainNode, index, "right", now, isAnimating);
+  };
+
   const animate = () => {
     if (!isEnabled) return;
-
     const now = Date.now();
-    const frameInterval = 1000 / FPS;
-
-    // Throttle to desired FPS
-    if (now - lastFrameTime >= frameInterval) {
+    
+    if (now - lastFrameTime >= 1000 / FPS) {
       lastFrameTime = now;
-
-      const audioSources = window.audioSources;
-      if (audioSources) {
-        audioSources.forEach((src, i) => {
-          if (src) {
-            processChannel(src.gainNode, i, null, now, true);
-            processChannel(src.leftGainNode, i, "left", now, true);
-            processChannel(src.rightGainNode, i, "right", now, true);
-          }
-        });
-      }
+      window.audioSources?.forEach((src, i) => processAllChannels(src, i, now, true));
     }
-
+    
     animationFrameId = requestAnimationFrame(animate);
   };
 
-  // Set new random target values for all channels
   const randomizeVolumes = () => {
-    if (!isEnabled) return;
-    const now = Date.now();
-
-    window.audioSources?.forEach((src, i) => {
-      if (src) {
-        processChannel(src.gainNode, i, null, now, false);
-        processChannel(src.leftGainNode, i, "left", now, false);
-        processChannel(src.rightGainNode, i, "right", now, false);
-      }
-    });
+    if (isEnabled) {
+      const now = Date.now();
+      window.audioSources?.forEach((src, i) => processAllChannels(src, i, now, false));
+    }
   };
 
-  // Start the mod
+  // UDP LISTENER
+  const setupUdpListener = () => {
+    const connectUdp = () => {
+      udpSocket = new WebSocket("ws://localhost:3001");
+
+      udpSocket.onopen = () => {
+        console.log("[Dying Bird] UDP connected");
+        udpSocket.send(JSON.stringify({
+          type: "udp-float-subscribe",
+          ip: UDP_IP,
+          port: UDP_PORT,
+        }));
+      };
+
+      udpSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "udp-float-value") {
+            const newValue = parseFloat(data.value);
+            if (lastUdpValue !== newValue && !isNaN(newValue)) {
+              console.log(newValue);
+              lastUdpValue = newValue;
+              if (isEnabled) randomizeVolumes();
+            }
+          }
+        } catch (err) {
+          console.error("[Dying Bird] UDP parse error:", err);
+        }
+      };
+
+      udpSocket.onclose = () => {
+        console.log("[Dying Bird] Reconnecting in 5s...");
+        udpSocket = null;
+        setTimeout(connectUdp, 5000);
+      };
+    };
+
+    connectUdp();
+  };
+
+  const cleanupUdpListener = () => {
+    if (udpSocket) udpSocket.close();
+    udpSocket = null;
+    lastUdpValue = null;
+  };
+
+  // START / STOP
   const start = () => {
-    if (intervalId) return;
+    if (isEnabled) return;
     isEnabled = true;
     setSliderState(true);
+    console.log("[Dying Bird] Started (UDP trigger mode)");
+    setupUdpListener();
     randomizeVolumes();
-    intervalId = setInterval(randomizeVolumes, INTERVAL);
     animate();
   };
 
-  // Stop the mod
   const stop = () => {
-    clearInterval(intervalId);
-    cancelAnimationFrame(animationFrameId);
-    intervalId = animationFrameId = null;
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
     isEnabled = false;
     channelStates.clear();
     setSliderState(false);
+    cleanupUdpListener();
+    console.log("[Dying Bird] Stopped");
   };
 
-  // Setup mute checkbox listeners to update slider state when dying bird is active
-  const setupMuteListeners = () => {
-    window.audioSources?.forEach((_, index) => {
-      [null, "left", "right"].forEach((side) => {
-        const muteCheckbox = document.querySelector(
-          `#mute-checkbox-${index}${getSuffix(side)}`
-        );
-        if (muteCheckbox) {
-          muteCheckbox.addEventListener("change", () => {
-            if (isEnabled) {
-              const slider = document.querySelector(
-                `#volume-slider-${index}${getSuffix(side)}`
-              );
-              if (slider) {
-                slider.disabled = true; // Keep disabled when dying bird is active
-              }
-            }
-          });
-        }
-      });
-    });
+  // INITIALIZATION
+  const init = () => {
+    const checkbox = document.getElementById("dying-bird-checkbox");
+    if (checkbox) {
+      checkbox.addEventListener("change", (e) => e.target.checked ? start() : stop());
+    }
   };
 
-  // Setup checkbox
-  const setup = () => {
-    const cb = document.getElementById("dying-bird-checkbox");
-    if (!cb) return;
-    cb.addEventListener("change", (e) => (e.target.checked ? start() : stop()));
-
-    // Setup mute listeners
-    setupMuteListeners();
-  };
-
-  // Initialize
-  document.readyState === "loading"
-    ? document.addEventListener("DOMContentLoaded", setup)
-    : setup();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 }
 
 // Auto-initialize the mod
