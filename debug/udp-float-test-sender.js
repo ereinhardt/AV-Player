@@ -11,7 +11,7 @@ client.bind(() => {
 // CONFIGURATION
 const CONFIG = {
   TARGET_IP: process.argv[2] || '255.255.255.255',  // Specific server IP (Broadcast 255.255.255.255 / 192.168.178.255 or specific Destination ip / 192.168.178.47)
-  TARGET_PORT: parseInt(process.argv[3]) || 3044,
+  TARGET_PORT: parseInt(process.argv[3]) || 3043,
   MIN_VALUE: -1.0,
   MAX_VALUE: 1.0,
   

@@ -144,25 +144,40 @@ class IntegratedArtNetServer {
       const listener = dgram.createSocket("udp4");
 
       listener.on("message", (msg, rinfo) => {
-        // Auto-detect format: 32-bit float, 64-bit double, or string
+        // Auto-detect format: 32-bit float, 64-bit double, JSON, or string
         let value;
         if (msg.length === 4) {
           value = msg.readFloatLE(0);      // 32-bit float
         } else if (msg.length === 8) {
           value = msg.readDoubleLE(0);     // 64-bit double
         } else {
-          value = parseFloat(msg.toString().trim());  // String fallback
+          const msgString = msg.toString().trim();
+          
+          // Try to parse as JSON first
+          try {
+            const jsonData = JSON.parse(msgString);
+            // Look for common encoder/position fields
+            value = jsonData.encoder_position || jsonData.position || jsonData.value;
+            if (value === undefined) {
+              console.warn("JSON received but no encoder_position/position/value field found:", jsonData);
+            }
+          } catch (e) {
+            // Not JSON, try parsing as plain number
+            value = parseFloat(msgString);
+          }
         }
         
-        this.clients.forEach((client) => {
-          const sub = this.udpFloatSubscribers.get(client);
-          if (sub?.port === port) {
-            this.send(client, "udp-float-value", `UDP Float: ${value}`, {
-              value,
-              source: `${rinfo.address}:${rinfo.port}`,
-            });
-          }
-        });
+        if (value !== undefined && !isNaN(value)) {
+          this.clients.forEach((client) => {
+            const sub = this.udpFloatSubscribers.get(client);
+            if (sub?.port === port) {
+              this.send(client, "udp-float-value", `UDP Float: ${value}`, {
+                value,
+                source: `${rinfo.address}:${rinfo.port}`,
+              });
+            }
+          });
+        }
       });
 
       listener.on("error", (err) => {
