@@ -73,6 +73,14 @@ async function getAudioDevices() {
     if (!navigator.mediaDevices?.enumerateDevices)
       throw new Error("API not supported");
 
+    // Request microphone permission to get device labels on Windows
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+    } catch (permError) {
+      console.warn("Microphone permission denied - device labels may be generic", permError);
+    }
+
     const devices = await navigator.mediaDevices.enumerateDevices();
     const options = devices
       .filter((device) => device.kind === "audiooutput")
