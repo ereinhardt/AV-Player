@@ -5,6 +5,10 @@
 by Erik Anton Reinhardt.<br>
 [MIT License]
 
+**Pre-Setup (Checklist):**
+
+1. Install Node.js.
+
 ## Start (A/V-Player) Software:
 
 ```bash
