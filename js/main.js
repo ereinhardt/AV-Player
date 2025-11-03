@@ -103,8 +103,18 @@ function validateDOMElements(elements) {
   return true;
 }
 
+// Request audio device permissions on startup
+async function requestAudioPermissions() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(track => track.stop());
+  } catch (error) {
+    console.warn('Audio permission denied:', error);
+  }
+}
+
 // Initialize AV Player when DOM is ready
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const tracks = document.querySelectorAll(".track");
   const loopCheckbox = document.getElementById("loop-checkbox");
 
@@ -120,6 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.audioElements = audioElements;
   window.audioSources = audioSources;
 
+  await requestAudioPermissions();
   getAudioDevices();
   setupVideoTrackHandling();
   initializeArtNet();
