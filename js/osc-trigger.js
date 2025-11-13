@@ -1,5 +1,6 @@
 class OSCTrigger {
-  constructor() {
+  constructor(index = 0) {
+    this.index = index;
     this.enabled = false;
     this.ip = "127.0.0.1";
     this.port = 7000;
@@ -10,18 +11,21 @@ class OSCTrigger {
     this.ws = null;
     this.isConnected = false;
     this.reconnectTimer = null;
+    this.lastTriggeredTime = -1; // Track last triggered time to avoid duplicates
 
+    // Use index-specific element IDs
+    const suffix = index > 0 ? `-${index}` : "";
     this.elements = {
-      enabled: document.getElementById("osc-trigger-enabled"),
-      ip: document.getElementById("osc-trigger-ip"),
-      port: document.getElementById("osc-trigger-port"),
-      oscAddress: document.getElementById("osc-trigger-address"),
-      dataType: document.getElementById("osc-trigger-datatype"),
-      value: document.getElementById("osc-trigger-value"),
-      time: document.getElementById("osc-trigger-time"),
-      ipPreset: document.getElementById("osc-trigger-ip-preset"),
-      apply: document.getElementById("osc-trigger-apply"),
-      status: document.getElementById("osc-trigger-status"),
+      enabled: document.getElementById(`osc-trigger-enabled${suffix}`),
+      ip: document.getElementById(`osc-trigger-ip${suffix}`),
+      port: document.getElementById(`osc-trigger-port${suffix}`),
+      oscAddress: document.getElementById(`osc-trigger-address${suffix}`),
+      dataType: document.getElementById(`osc-trigger-datatype${suffix}`),
+      value: document.getElementById(`osc-trigger-value${suffix}`),
+      time: document.getElementById(`osc-trigger-time${suffix}`),
+      ipPreset: document.getElementById(`osc-trigger-ip-preset${suffix}`),
+      apply: document.getElementById(`osc-trigger-apply${suffix}`),
+      status: document.getElementById(`osc-trigger-status${suffix}`),
     };
 
     this.setupUI();
@@ -102,7 +106,11 @@ class OSCTrigger {
       (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "osc-trigger-sent") this.showSentStatus(data.details);
+          // Check if this message is for this specific trigger
+          if (data.type === "osc-trigger-sent" && 
+              (data.details?.index === this.index || (data.details?.index === undefined && this.index === 0))) {
+            this.showSentStatus(data.details);
+          }
         } catch (e) {}
       },
       () => {
@@ -182,6 +190,7 @@ class OSCTrigger {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({
         type: "osc-trigger-config",
+        index: this.index,
         enabled: this.enabled,
         ip: this.ip,
         port: this.port,
@@ -216,6 +225,7 @@ class OSCTrigger {
 
     this.ws.send(JSON.stringify({
       type: "osc-trigger-send",
+      index: this.index,
       action,
       ip: this.ip,
       port: this.port,
@@ -223,6 +233,23 @@ class OSCTrigger {
       dataType: this.dataType,
       value: this.value,
     }));
+  }
+
+  // Check if trigger should fire at current time
+  checkAndTrigger(currentTime, isPlaying) {
+    if (!this.enabled || !isPlaying) return;
+
+    const tolerance = 0.5; // 500ms tolerance
+    if (Math.abs(currentTime - this.triggerTime) < tolerance && 
+        this.lastTriggeredTime !== this.triggerTime) {
+      this.lastTriggeredTime = this.triggerTime;
+      this.sendTrigger("start");
+    }
+  }
+
+  // Reset trigger state (for loop restart or seek)
+  resetTrigger() {
+    this.lastTriggeredTime = -1;
   }
 
   // Parse time string (HH:MM:SS) to seconds
@@ -251,19 +278,59 @@ class OSCTrigger {
   }
 }
 
-window.oscTrigger = null;
+// OSC Trigger Manager for handling multiple triggers
+class OSCTriggerManager {
+  constructor(count = 8) {
+    this.triggers = [];
+    for (let i = 0; i < count; i++) {
+      this.triggers.push(new OSCTrigger(i));
+    }
+  }
+
+  // Check all triggers at current time
+  checkAllTriggers(currentTime, isPlaying) {
+    this.triggers.forEach(trigger => trigger.checkAndTrigger(currentTime, isPlaying));
+  }
+
+  // Reset all triggers (for loop restart or seek)
+  resetAllTriggers() {
+    this.triggers.forEach(trigger => trigger.resetTrigger());
+  }
+
+  // Get a specific trigger by index
+  getTrigger(index) {
+    return this.triggers[index];
+  }
+
+  // Destroy all triggers
+  destroy() {
+    this.triggers.forEach(trigger => trigger.destroy());
+    this.triggers = [];
+  }
+}
+
+window.oscTriggerManager = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  window.oscTrigger?.destroy();
-  window.oscTrigger = new OSCTrigger();
+  window.oscTriggerManager?.destroy();
+  window.oscTriggerManager = new OSCTriggerManager(8);
+  
+  // Keep backward compatibility
+  window.oscTrigger = window.oscTriggerManager.getTrigger(0);
 });
 
 window.addEventListener("beforeunload", () => {
-  window.oscTrigger?.destroy();
-  window.oscTrigger = null;
+  if (window.oscTriggerManager) {
+    window.oscTriggerManager.destroy();
+    window.oscTriggerManager = null;
+    window.oscTrigger = null;
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!window.oscTrigger) return;
-  document.hidden ? window.oscTrigger.closeWebSocket() : window.oscTrigger.connectToServer();
+  if (document.hidden && window.oscTriggerManager) {
+    window.oscTriggerManager.triggers.forEach(trigger => trigger.closeWebSocket());
+  } else if (!document.hidden && window.oscTriggerManager) {
+    window.oscTriggerManager.triggers.forEach(trigger => trigger.connectToServer());
+  }
 });

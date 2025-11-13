@@ -18,19 +18,23 @@ class IntegratedArtNetServer {
     this.artNetIP = "127.0.0.1";
     this.artNetPort = 6454;
 
-    // UDP Trigger config
-    this.udpEnabled = false;
-    this.udpIP = "192.168.178.255";
-    this.udpPort = 9998;
-    this.udpMessage = "START";
+    // UDP Trigger configs (8 independent triggers)
+    this.udpTriggers = Array.from({ length: 8 }, (_, i) => ({
+      enabled: false,
+      ip: "192.168.178.255",
+      port: 9998,
+      message: "START",
+    }));
 
-    // OSC Trigger config
-    this.oscEnabled = false;
-    this.oscIP = "127.0.0.1";
-    this.oscPort = 7000;
-    this.oscAddress = "/trigger/start";
-    this.oscDataType = "float";
-    this.oscValue = 1.0;
+    // OSC Trigger configs (8 independent triggers)
+    this.oscTriggers = Array.from({ length: 8 }, (_, i) => ({
+      enabled: false,
+      ip: "127.0.0.1",
+      port: 7000,
+      oscAddress: "/trigger/start",
+      dataType: "float",
+      value: 1.0,
+    }));
 
     // Static files
     this.app.use(express.static(__dirname));
@@ -40,10 +44,20 @@ class IntegratedArtNetServer {
 
     // UDP sockets
     this.udpSocket = dgram.createSocket("udp4");
-    this.udpTriggerSocket = dgram.createSocket("udp4");
-    this.udpTriggerSocket.bind(() => this.udpTriggerSocket.setBroadcast(true));
-    this.oscTriggerSocket = dgram.createSocket("udp4");
-    this.oscTriggerSocket.bind(() => this.oscTriggerSocket.setBroadcast(true));
+    
+    // Create 8 UDP trigger sockets
+    this.udpTriggerSockets = Array.from({ length: 8 }, () => {
+      const socket = dgram.createSocket("udp4");
+      socket.bind(() => socket.setBroadcast(true));
+      return socket;
+    });
+    
+    // Create 8 OSC trigger sockets
+    this.oscTriggerSockets = Array.from({ length: 8 }, () => {
+      const socket = dgram.createSocket("udp4");
+      socket.bind(() => socket.setBroadcast(true));
+      return socket;
+    });
 
     this.setupWebSocket();
   }
@@ -126,48 +140,69 @@ class IntegratedArtNetServer {
 
   // Configure UDP trigger settings (IP, port, message, enabled state)
   configureUDP(data, ws) {
-    const { enabled, ip, port, message } = data;
+    const { index = 0, enabled, ip, port, message } = data;
+    
+    // Ensure index is valid
+    if (index < 0 || index >= this.udpTriggers.length) {
+      this.send(ws, "udp-trigger-error", `Invalid trigger index: ${index}`);
+      return;
+    }
 
-    if (typeof enabled === "boolean") this.udpEnabled = enabled;
-    if (ip?.trim()) this.udpIP = ip.trim();
-    if (port && port >= 1 && port <= 65535) this.udpPort = port;
-    if (message?.trim()) this.udpMessage = message.trim();
+    const trigger = this.udpTriggers[index];
 
-    this.send(ws, "udp-trigger-config-updated", "UDP config updated", {
+    if (typeof enabled === "boolean") trigger.enabled = enabled;
+    if (ip?.trim()) trigger.ip = ip.trim();
+    if (port && port >= 1 && port <= 65535) trigger.port = port;
+    if (message?.trim()) trigger.message = message.trim();
+
+    this.send(ws, "udp-trigger-config-updated", `UDP Trigger ${index + 1} config updated`, {
       config: {
-        enabled: this.udpEnabled,
-        ip: this.udpIP,
-        port: this.udpPort,
-        message: this.udpMessage,
+        index,
+        enabled: trigger.enabled,
+        ip: trigger.ip,
+        port: trigger.port,
+        message: trigger.message,
       },
     });
   }
 
   // Send UDP trigger message to configured target
   sendUDP(data, ws) {
-    if (!this.udpEnabled) {
-      this.send(ws, "udp-trigger-error", "UDP Trigger is disabled");
+    const { index = 0 } = data;
+    
+    // Ensure index is valid
+    if (index < 0 || index >= this.udpTriggers.length) {
+      this.send(ws, "udp-trigger-error", `Invalid trigger index: ${index}`);
+      return;
+    }
+
+    const trigger = this.udpTriggers[index];
+    const socket = this.udpTriggerSockets[index];
+
+    if (!trigger.enabled) {
+      this.send(ws, "udp-trigger-error", `UDP Trigger ${index + 1} is disabled`);
       return;
     }
 
     const message =
       data.action === "stop"
         ? "STOP"
-        : data.customMessage || this.udpMessage || "START";
+        : data.message || trigger.message || "START";
     const buffer = Buffer.from(message, "ascii");
 
-    this.udpTriggerSocket.send(buffer, this.udpPort, this.udpIP, (error) => {
+    socket.send(buffer, trigger.port, trigger.ip, (error) => {
       const messageType = error ? "udp-trigger-error" : "udp-trigger-sent";
       const messageText = error
-        ? `UDP send failed: ${error.message}`
-        : `Message "${message}" sent`;
+        ? `UDP Trigger ${index + 1} send failed: ${error.message}`
+        : `Message "${message}" sent from Trigger ${index + 1}`;
       const extraData = error
         ? {}
         : {
             details: {
+              index,
               message,
-              ip: this.udpIP,
-              port: this.udpPort,
+              ip: trigger.ip,
+              port: trigger.port,
               action: data.action,
             },
           };
@@ -178,25 +213,34 @@ class IntegratedArtNetServer {
 
   // Configure OSC trigger settings (IP, port, address, data type, value, enabled state)
   configureOSC(data, ws) {
-    const { enabled, ip, port, oscAddress, dataType, value } = data;
+    const { index = 0, enabled, ip, port, oscAddress, dataType, value } = data;
 
-    if (typeof enabled === "boolean") this.oscEnabled = enabled;
-    if (ip?.trim()) this.oscIP = ip.trim();
-    if (port && port >= 1 && port <= 65535) this.oscPort = port;
+    // Ensure index is valid
+    if (index < 0 || index >= this.oscTriggers.length) {
+      this.send(ws, "osc-trigger-error", `Invalid trigger index: ${index}`);
+      return;
+    }
+
+    const trigger = this.oscTriggers[index];
+
+    if (typeof enabled === "boolean") trigger.enabled = enabled;
+    if (ip?.trim()) trigger.ip = ip.trim();
+    if (port && port >= 1 && port <= 65535) trigger.port = port;
     if (oscAddress?.trim() && oscAddress.startsWith("/"))
-      this.oscAddress = oscAddress.trim();
+      trigger.oscAddress = oscAddress.trim();
     if (dataType && ["float", "integer", "string"].includes(dataType))
-      this.oscDataType = dataType;
-    if (value !== undefined) this.oscValue = value;
+      trigger.dataType = dataType;
+    if (value !== undefined) trigger.value = value;
 
-    this.send(ws, "osc-trigger-config-updated", "OSC config updated", {
+    this.send(ws, "osc-trigger-config-updated", `OSC Trigger ${index + 1} config updated`, {
       config: {
-        enabled: this.oscEnabled,
-        ip: this.oscIP,
-        port: this.oscPort,
-        oscAddress: this.oscAddress,
-        dataType: this.oscDataType,
-        value: this.oscValue,
+        index,
+        enabled: trigger.enabled,
+        ip: trigger.ip,
+        port: trigger.port,
+        oscAddress: trigger.oscAddress,
+        dataType: trigger.dataType,
+        value: trigger.value,
       },
     });
   }
@@ -253,31 +297,43 @@ class IntegratedArtNetServer {
 
   // Send OSC trigger message to configured target
   sendOSC(data, ws) {
-    if (!this.oscEnabled) {
-      this.send(ws, "osc-trigger-error", "OSC Trigger is disabled");
+    const { index = 0 } = data;
+
+    // Ensure index is valid
+    if (index < 0 || index >= this.oscTriggers.length) {
+      this.send(ws, "osc-trigger-error", `Invalid trigger index: ${index}`);
+      return;
+    }
+
+    const trigger = this.oscTriggers[index];
+    const socket = this.oscTriggerSockets[index];
+
+    if (!trigger.enabled) {
+      this.send(ws, "osc-trigger-error", `OSC Trigger ${index + 1} is disabled`);
       return;
     }
 
     const oscBuffer = this.encodeOSCMessage(
-      this.oscAddress,
-      this.oscDataType,
-      this.oscValue
+      trigger.oscAddress,
+      trigger.dataType,
+      trigger.value
     );
 
-    this.oscTriggerSocket.send(oscBuffer, this.oscPort, this.oscIP, (error) => {
+    socket.send(oscBuffer, trigger.port, trigger.ip, (error) => {
       const messageType = error ? "osc-trigger-error" : "osc-trigger-sent";
       const messageText = error
-        ? `OSC send failed: ${error.message}`
-        : `OSC message sent`;
+        ? `OSC Trigger ${index + 1} send failed: ${error.message}`
+        : `OSC message sent from Trigger ${index + 1}`;
       const extraData = error
         ? {}
         : {
             details: {
-              oscAddress: this.oscAddress,
-              value: this.oscValue,
-              dataType: this.oscDataType,
-              ip: this.oscIP,
-              port: this.oscPort,
+              index,
+              oscAddress: trigger.oscAddress,
+              value: trigger.value,
+              dataType: trigger.dataType,
+              ip: trigger.ip,
+              port: trigger.port,
               action: data.action,
             },
           };
@@ -297,8 +353,8 @@ class IntegratedArtNetServer {
   stop() {
     this.wss.close();
     this.udpSocket.close();
-    this.udpTriggerSocket.close();
-    this.oscTriggerSocket.close();
+    this.udpTriggerSockets.forEach(socket => socket.close());
+    this.oscTriggerSockets.forEach(socket => socket.close());
     this.server.close();
   }
 }

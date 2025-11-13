@@ -34,7 +34,7 @@
         </div>
         
         <div class="artnet-settings">
-            <div class="artnet-title">Art-Net Timecode (via UDP) Settings: <span id="artnet-status-display" class="artnet-status">(127.0.0.1:6454 / 25fps / 00:00:00:00)</span></div>
+            <div class="artnet-title">Art-Net Timecode (via UDP): <span id="artnet-status-display" class="artnet-status">(127.0.0.1:6454 / 25fps / 00:00:00:00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="artnet-enabled" checked>
                 <label for="artnet-enabled">Enable Art-Net Timecode</label>
@@ -65,15 +65,63 @@
                 <button id="apply-settings-btn" class="apply-settings-btn">Apply Settings</button>
             </div>
         </div>
-        <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger Settings: <span id="udp-trigger-status" class="udp-trigger-status">(Auto Broadcast:9998 / START)</span></div>
+
+        <div class="midi-bpm-settings">
+            <div class="midi-bpm-title">MIDI BPM Clock: <span id="midi-bpm-status-display" class="midi-bpm-status">(Disabled / 120 BPM)</span></div>
             <div class="setting-group">
-                <input type="checkbox" id="udp-trigger-enabled">
-                <label for="udp-trigger-enabled">Enable UDP Trigger</label>
+                <input type="checkbox" id="midi-bpm-enabled">
+                <label for="midi-bpm-enabled">Enable MIDI BPM Clock</label>
             </div>
             <div class="setting-group">
-                <label for="udp-trigger-ip">IP Address:</label>
-                <select id="udp-trigger-ip-preset" onchange="updateUDPIPField()">
+                <label for="midi-device-select">MIDI Output Device:</label>
+                <select id="midi-device-select">
+                    <option value="">No MIDI device available</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="midi-bpm-input">BPM (20-400):</label>
+                <input type="number" id="midi-bpm-input" min="20" max="400" value="120" step="0.1" title="Set BPM for MIDI Clock">
+            </div>
+            <div class="setting-group">
+                <label for="metronome-time-signature">Metronome Time Signature:</label>
+                <select id="metronome-time-signature">
+                    <option value="2/4">2/4</option>
+                    <option value="3/4">3/4</option>
+                    <option value="4/4" selected>4/4</option>
+                    <option value="5/4">5/4</option>
+                    <option value="6/8">6/8</option>
+                    <option value="7/8">7/8</option>
+                    <option value="9/8">9/8</option>
+                    <option value="12/8">12/8</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="metronome-volume">Metronome Volume:</label>
+                <input type="range" id="metronome-volume" min="-60" max="30" value="0" step="0.1">
+                <span id="metronome-volume-display" class="volume-db">0.0 dB</span>
+                <input type="checkbox" id="metronome-mute" class="mute-checkbox" checked>
+                <label for="metronome-mute">Mute</label>
+            </div>
+            <div class="setting-group">
+                <label for="metronome-device-select">Metronome Audio Device:</label>
+                <select id="metronome-device-select" class="audio-device-select">
+                    <option value="">Default Audio Output</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <button id="midi-bpm-apply" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 1: <span id="udp-trigger-status" class="udp-trigger-status">(Auto Broadcast:9998 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled">
+                <label for="udp-trigger-enabled">Enable UDP Trigger 1</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip-preset">IP Address:</label>
+                <select id="udp-trigger-ip-preset" onchange="updateUDPIPField(0)">
                     <option value="127.0.0.1">Localhost (127.0.0.1)</option>
                     <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
                     <option value="custom">Custom IP...</option>
@@ -96,15 +144,232 @@
                 <button id="udp-trigger-apply" class="apply-settings-btn">Apply Settings</button>
             </div>
         </div>
-        <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) Settings: <span id="osc-trigger-status" class="osc-trigger-status">(127.0.0.1:7000 / /trigger/start ,f 1.00)</span></div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 2: <span id="udp-trigger-status-1" class="udp-trigger-status">(Auto Broadcast:9999 / START)</span></div>
             <div class="setting-group">
-                <input type="checkbox" id="osc-trigger-enabled">
-                <label for="osc-trigger-enabled">Enable OSC Trigger</label>
+                <input type="checkbox" id="udp-trigger-enabled-1">
+                <label for="udp-trigger-enabled-1">Enable UDP Trigger 2</label>
             </div>
             <div class="setting-group">
-                <label for="osc-trigger-ip">IP Address:</label>
-                <select id="osc-trigger-ip-preset" onchange="updateOSCIPField()">
+                <label for="udp-trigger-ip-preset-1">IP Address:</label>
+                <select id="udp-trigger-ip-preset-1" onchange="updateUDPIPField(1)">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip-1" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port-1">Port:</label>
+                <input type="number" id="udp-trigger-port-1" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-time-1">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time-1" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message-1">Message:</label>
+                <input type="text" id="udp-trigger-message-1" placeholder="START" value="START" title="Message to send">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply-1" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 3: <span id="udp-trigger-status-2" class="udp-trigger-status">(Auto Broadcast:10000 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled-2">
+                <label for="udp-trigger-enabled-2">Enable UDP Trigger 3</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip-preset-2">IP Address:</label>
+                <select id="udp-trigger-ip-preset-2" onchange="updateUDPIPField(2)">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip-2" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port-2">Port:</label>
+                <input type="number" id="udp-trigger-port-2" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-time-2">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time-2" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message-2">Message:</label>
+                <input type="text" id="udp-trigger-message-2" placeholder="START" value="START" title="Message to send">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply-2" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 4: <span id="udp-trigger-status-3" class="udp-trigger-status">(Auto Broadcast:10001 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled-3">
+                <label for="udp-trigger-enabled-3">Enable UDP Trigger 4</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip-preset-3">IP Address:</label>
+                <select id="udp-trigger-ip-preset-3" onchange="updateUDPIPField(3)">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip-3" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port-3">Port:</label>
+                <input type="number" id="udp-trigger-port-3" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-time-3">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time-3" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message-3">Message:</label>
+                <input type="text" id="udp-trigger-message-3" placeholder="START" value="START" title="Message to send">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply-3" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 5: <span id="udp-trigger-status-4" class="udp-trigger-status">(Auto Broadcast:10002 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled-4">
+                <label for="udp-trigger-enabled-4">Enable UDP Trigger 5</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip-preset-4">IP Address:</label>
+                <select id="udp-trigger-ip-preset-4" onchange="updateUDPIPField(4)">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip-4" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port-4">Port:</label>
+                <input type="number" id="udp-trigger-port-4" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-time-4">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time-4" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message-4">Message:</label>
+                <input type="text" id="udp-trigger-message-4" placeholder="START" value="START" title="Message to send">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply-4" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 6: <span id="udp-trigger-status-5" class="udp-trigger-status">(Auto Broadcast:10003 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled-5">
+                <label for="udp-trigger-enabled-5">Enable UDP Trigger 6</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip-preset-5">IP Address:</label>
+                <select id="udp-trigger-ip-preset-5" onchange="updateUDPIPField(5)">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip-5" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port-5">Port:</label>
+                <input type="number" id="udp-trigger-port-5" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-time-5">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time-5" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message-5">Message:</label>
+                <input type="text" id="udp-trigger-message-5" placeholder="START" value="START" title="Message to send">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply-5" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 7: <span id="udp-trigger-status-6" class="udp-trigger-status">(Auto Broadcast:10004 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled-6">
+                <label for="udp-trigger-enabled-6">Enable UDP Trigger 7</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip-preset-6">IP Address:</label>
+                <select id="udp-trigger-ip-preset-6" onchange="updateUDPIPField(6)">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip-6" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port-6">Port:</label>
+                <input type="number" id="udp-trigger-port-6" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-time-6">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time-6" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message-6">Message:</label>
+                <input type="text" id="udp-trigger-message-6" placeholder="START" value="START" title="Message to send">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply-6" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="udp-trigger-settings">
+            <div class="udp-trigger-title">UDP Trigger 8: <span id="udp-trigger-status-7" class="udp-trigger-status">(Auto Broadcast:10005 / START)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="udp-trigger-enabled-7">
+                <label for="udp-trigger-enabled-7">Enable UDP Trigger 8</label>
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-ip-preset-7">IP Address:</label>
+                <select id="udp-trigger-ip-preset-7" onchange="updateUDPIPField(7)">
+                    <option value="127.0.0.1">Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast" selected>Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="udp-trigger-ip-7" placeholder="Enter custom IP address" value="192.168.1.255">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-port-7">Port:</label>
+                <input type="number" id="udp-trigger-port-7" min="1" max="65535" value="9998" title="UDP port for trigger messages">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-time-7">Trigger Timing:</label>
+                <input type="text" id="udp-trigger-time-7" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="udp-trigger-message-7">Message:</label>
+                <input type="text" id="udp-trigger-message-7" placeholder="START" value="START" title="Message to send">
+            </div>
+            <div class="setting-group">
+                <button id="udp-trigger-apply-7" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 1: <span id="osc-trigger-status" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled">
+                <label for="osc-trigger-enabled">Enable OSC Trigger 1</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset">IP Address:</label>
+                <select id="osc-trigger-ip-preset" onchange="updateOSCIPField(0)">
                     <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
                     <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
                     <option value="custom">Custom IP...</option>
@@ -117,7 +382,7 @@
             </div>
             <div class="setting-group">
                 <label for="osc-trigger-time">Trigger Timing:</label>
-                <input type="text" id="osc-trigger-time" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent (e.g., 00:00:00 for loop start, 00:00:59 for loop end)">
+                <input type="text" id="osc-trigger-time" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
             </div>
             <div class="setting-group">
                 <label for="osc-trigger-address">OSC Address:</label>
@@ -137,6 +402,307 @@
             </div>
             <div class="setting-group">
                 <button id="osc-trigger-apply" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 2: <span id="osc-trigger-status-1" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled-1">
+                <label for="osc-trigger-enabled-1">Enable OSC Trigger 2</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset-1">IP Address:</label>
+                <select id="osc-trigger-ip-preset-1" onchange="updateOSCIPField(1)">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip-1" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port-1">Port:</label>
+                <input type="number" id="osc-trigger-port-1" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time-1">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time-1" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address-1">OSC Address:</label>
+                <input type="text" id="osc-trigger-address-1" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype-1">Data Type:</label>
+                <select id="osc-trigger-datatype-1">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value-1">Value/Message:</label>
+                <input type="number" id="osc-trigger-value-1" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply-1" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 3: <span id="osc-trigger-status-2" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled-2">
+                <label for="osc-trigger-enabled-2">Enable OSC Trigger 3</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset-2">IP Address:</label>
+                <select id="osc-trigger-ip-preset-2" onchange="updateOSCIPField(2)">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip-2" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port-2">Port:</label>
+                <input type="number" id="osc-trigger-port-2" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time-2">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time-2" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address-2">OSC Address:</label>
+                <input type="text" id="osc-trigger-address-2" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype-2">Data Type:</label>
+                <select id="osc-trigger-datatype-2">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value-2">Value/Message:</label>
+                <input type="number" id="osc-trigger-value-2" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply-2" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 4: <span id="osc-trigger-status-3" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled-3">
+                <label for="osc-trigger-enabled-3">Enable OSC Trigger 4</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset-3">IP Address:</label>
+                <select id="osc-trigger-ip-preset-3" onchange="updateOSCIPField(3)">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip-3" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port-3">Port:</label>
+                <input type="number" id="osc-trigger-port-3" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time-3">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time-3" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address-3">OSC Address:</label>
+                <input type="text" id="osc-trigger-address-3" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype-3">Data Type:</label>
+                <select id="osc-trigger-datatype-3">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value-3">Value/Message:</label>
+                <input type="number" id="osc-trigger-value-3" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply-3" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 5: <span id="osc-trigger-status-4" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled-4">
+                <label for="osc-trigger-enabled-4">Enable OSC Trigger 5</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset-4">IP Address:</label>
+                <select id="osc-trigger-ip-preset-4" onchange="updateOSCIPField(4)">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip-4" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port-4">Port:</label>
+                <input type="number" id="osc-trigger-port-4" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time-4">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time-4" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address-4">OSC Address:</label>
+                <input type="text" id="osc-trigger-address-4" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype-4">Data Type:</label>
+                <select id="osc-trigger-datatype-4">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value-4">Value/Message:</label>
+                <input type="number" id="osc-trigger-value-4" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply-4" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 6: <span id="osc-trigger-status-5" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled-5">
+                <label for="osc-trigger-enabled-5">Enable OSC Trigger 6</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset-5">IP Address:</label>
+                <select id="osc-trigger-ip-preset-5" onchange="updateOSCIPField(5)">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip-5" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port-5">Port:</label>
+                <input type="number" id="osc-trigger-port-5" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time-5">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time-5" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address-5">OSC Address:</label>
+                <input type="text" id="osc-trigger-address-5" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype-5">Data Type:</label>
+                <select id="osc-trigger-datatype-5">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value-5">Value/Message:</label>
+                <input type="number" id="osc-trigger-value-5" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply-5" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 7: <span id="osc-trigger-status-6" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled-6">
+                <label for="osc-trigger-enabled-6">Enable OSC Trigger 7</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset-6">IP Address:</label>
+                <select id="osc-trigger-ip-preset-6" onchange="updateOSCIPField(6)">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip-6" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port-6">Port:</label>
+                <input type="number" id="osc-trigger-port-6" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time-6">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time-6" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address-6">OSC Address:</label>
+                <input type="text" id="osc-trigger-address-6" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype-6">Data Type:</label>
+                <select id="osc-trigger-datatype-6">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value-6">Value/Message:</label>
+                <input type="number" id="osc-trigger-value-6" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply-6" class="apply-settings-btn">Apply Settings</button>
+            </div>
+        </div>
+        <div class="osc-trigger-settings">
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 8: <span id="osc-trigger-status-7" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="setting-group">
+                <input type="checkbox" id="osc-trigger-enabled-7">
+                <label for="osc-trigger-enabled-7">Enable OSC Trigger 8</label>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-ip-preset-7">IP Address:</label>
+                <select id="osc-trigger-ip-preset-7" onchange="updateOSCIPField(7)">
+                    <option value="127.0.0.1" selected>Localhost (127.0.0.1)</option>
+                    <option value="auto-broadcast">Broadcast (Dynamic IP)</option>
+                    <option value="custom">Custom IP...</option>
+                </select>
+                <input type="text" id="osc-trigger-ip-7" placeholder="Enter custom IP address" value="127.0.0.1">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-port-7">Port:</label>
+                <input type="number" id="osc-trigger-port-7" min="1" max="65535" value="7000" title="UDP port for OSC messages">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-time-7">Trigger Timing:</label>
+                <input type="text" id="osc-trigger-time-7" placeholder="00:00:00" value="00:00:00" pattern="\d{2}:\d{2}:\d{2}" title="Time in master timeline when trigger should be sent">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-address-7">OSC Address:</label>
+                <input type="text" id="osc-trigger-address-7" placeholder="/trigger/start" value="/trigger/start" title="OSC address pattern (must start with /)">
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-datatype-7">Data Type:</label>
+                <select id="osc-trigger-datatype-7">
+                    <option value="float" selected>Float (0.0 - 1.0)</option>
+                    <option value="integer">Integer (0 - 1)</option>
+                    <option value="string">String (Text)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="osc-trigger-value-7">Value/Message:</label>
+                <input type="number" id="osc-trigger-value-7" min="0" max="1" step="0.01" value="1.0" title="Value to send with OSC message">
+            </div>
+            <div class="setting-group">
+                <button id="osc-trigger-apply-7" class="apply-settings-btn">Apply Settings</button>
             </div>
         </div>
         <div id="track-list">
@@ -652,16 +1218,272 @@
                     </div>
                 </div>
             </div>
+            <div class="track" data-index="16">
+                <div class="track-info">
+                    <label for="file-input-16">Audio Track 17:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-16" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-16').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="16">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-16">Audio Device:</label>
+                        <select id="audio-device-select-16" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-16">Channel:</label>
+                        <select id="channel-select-16" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-16">Volume:</label>
+                            <input type="range" id="volume-slider-16" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-16" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-16" class="mute-checkbox">
+                            <label for="mute-checkbox-16">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="17">
+                <div class="track-info">
+                    <label for="file-input-17">Audio Track 18:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-17" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-17').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="17">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-17">Audio Device:</label>
+                        <select id="audio-device-select-17" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-17">Channel:</label>
+                        <select id="channel-select-17" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-17">Volume:</label>
+                            <input type="range" id="volume-slider-17" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-17" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-17" class="mute-checkbox">
+                            <label for="mute-checkbox-17">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="18">
+                <div class="track-info">
+                    <label for="file-input-18">Audio Track 19:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-18" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-18').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="18">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-18">Audio Device:</label>
+                        <select id="audio-device-select-18" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-18">Channel:</label>
+                        <select id="channel-select-18" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-18">Volume:</label>
+                            <input type="range" id="volume-slider-18" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-18" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-18" class="mute-checkbox">
+                            <label for="mute-checkbox-18">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="19">
+                <div class="track-info">
+                    <label for="file-input-19">Audio Track 20:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-19" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-19').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="19">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-19">Audio Device:</label>
+                        <select id="audio-device-select-19" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-19">Channel:</label>
+                        <select id="channel-select-19" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-19">Volume:</label>
+                            <input type="range" id="volume-slider-19" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-19" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-19" class="mute-checkbox">
+                            <label for="mute-checkbox-19">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="20">
+                <div class="track-info">
+                    <label for="file-input-20">Audio Track 21:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-20" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-20').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="20">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-20">Audio Device:</label>
+                        <select id="audio-device-select-20" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-20">Channel:</label>
+                        <select id="channel-select-20" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-20">Volume:</label>
+                            <input type="range" id="volume-slider-20" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-20" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-20" class="mute-checkbox">
+                            <label for="mute-checkbox-20">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="21">
+                <div class="track-info">
+                    <label for="file-input-21">Audio Track 22:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-21" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-21').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="21">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-21">Audio Device:</label>
+                        <select id="audio-device-select-21" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-21">Channel:</label>
+                        <select id="channel-select-21" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-21">Volume:</label>
+                            <input type="range" id="volume-slider-21" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-21" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-21" class="mute-checkbox">
+                            <label for="mute-checkbox-21">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="22">
+                <div class="track-info">
+                    <label for="file-input-22">Audio Track 23:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-22" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-22').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="22">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-22">Audio Device:</label>
+                        <select id="audio-device-select-22" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-22">Channel:</label>
+                        <select id="channel-select-22" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-22">Volume:</label>
+                            <input type="range" id="volume-slider-22" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-22" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-22" class="mute-checkbox">
+                            <label for="mute-checkbox-22">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="track" data-index="23">
+                <div class="track-info">
+                    <label for="file-input-23">Audio Track 24:</label>
+                    <div class="track-file-controls">
+                        <input type="file" id="file-input-23" class="file-input" accept="audio/mp3, audio/wav">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-23').click()">Add Audio</button>
+                        <span class="file-name">No file selected</span>
+                    <button class="remove-btn" data-track-index="23">Remove</button>
+                    </div>
+                </div>
+                <div class="timeline-wrapper">
+                    <progress class="timeline-progress" max="100" value="0"></progress>
+                    <span class="time-display">00:00:00 / 00:00:00</span>
+                </div>
+                <div class="track-controls">
+                    <div class="audio-device-row">
+                        <label for="audio-device-select-23">Audio Device:</label>
+                        <select id="audio-device-select-23" class="audio-device-select"></select>
+                    </div>
+                    <div class="audio-control-row">
+                        <label for="channel-select-23">Channel:</label>
+                        <select id="channel-select-23" class="channel-select"></select>
+                        <div class="volume-control">
+                            <label for="volume-slider-23">Volume:</label>
+                            <input type="range" id="volume-slider-23" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                            <span id="volume-db-23" class="volume-db">0.0 dB</span>
+                            <input type="checkbox" id="mute-checkbox-23" class="mute-checkbox">
+                            <label for="mute-checkbox-23">Mute</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Video Track -->
-            <div class="track video-track" data-index="16">
+            <div class="track video-track" data-index="24">
                 <div class="track-info">
-                    <label for="file-input-16">Video Track 1:</label>
+                    <label for="file-input-24">Video Track 1:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-16" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-16').click()">Add Video</button>
+                        <input type="file" id="file-input-24" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-24').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="16">Remove</button>
-                        <button id="video-window-btn-16" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="24">Remove</button>
+                        <button id="video-window-btn-24" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -671,43 +1493,43 @@
                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-16" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-16" class="audio-device-select"></select>
+                            <label for="audio-device-select-24" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-24" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-16-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-16-left" class="channel-select"></select>
+                            <label for="channel-select-24-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-24-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-16-left">Volume:</label>
-                                <input type="range" id="volume-slider-16-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-16-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-16-left" class="mute-checkbox">
-                                <label for="mute-checkbox-16-left">Mute</label>
+                                <label for="volume-slider-24-left">Volume:</label>
+                                <input type="range" id="volume-slider-24-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-24-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-24-left" class="mute-checkbox">
+                                <label for="mute-checkbox-24-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-16-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-16-right" class="channel-select"></select>
+                            <label for="channel-select-24-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-24-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-16-right">Volume:</label>
-                                <input type="range" id="volume-slider-16-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-16-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-16-right" class="mute-checkbox">
-                                <label for="mute-checkbox-16-right">Mute</label>
+                                <label for="volume-slider-24-right">Volume:</label>
+                                <input type="range" id="volume-slider-24-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-24-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-24-right" class="mute-checkbox">
+                                <label for="mute-checkbox-24-right">Mute</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="track video-track" data-index="17">
+            <div class="track video-track" data-index="25">
                 <div class="track-info">
-                    <label for="file-input-17">Video Track 2:</label>
+                    <label for="file-input-25">Video Track 2:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-17" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-17').click()">Add Video</button>
+                        <input type="file" id="file-input-25" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-25').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="17">Remove</button>
-                        <button id="video-window-btn-17" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="25">Remove</button>
+                        <button id="video-window-btn-25" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -717,43 +1539,43 @@
                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-17" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-17" class="audio-device-select"></select>
+                            <label for="audio-device-select-25" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-25" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-17-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-17-left" class="channel-select"></select>
+                            <label for="channel-select-25-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-25-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-17-left">Volume:</label>
-                                <input type="range" id="volume-slider-17-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-17-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-17-left" class="mute-checkbox">
-                                <label for="mute-checkbox-17-left">Mute</label>
+                                <label for="volume-slider-25-left">Volume:</label>
+                                <input type="range" id="volume-slider-25-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-25-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-25-left" class="mute-checkbox">
+                                <label for="mute-checkbox-25-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-17-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-17-right" class="channel-select"></select>
+                            <label for="channel-select-25-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-25-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-17-right">Volume:</label>
-                                <input type="range" id="volume-slider-17-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-17-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-17-right" class="mute-checkbox">
-                                <label for="mute-checkbox-17-right">Mute</label>
+                                <label for="volume-slider-25-right">Volume:</label>
+                                <input type="range" id="volume-slider-25-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-25-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-25-right" class="mute-checkbox">
+                                <label for="mute-checkbox-25-right">Mute</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="track video-track" data-index="18">
+            <div class="track video-track" data-index="26">
                 <div class="track-info">
-                    <label for="file-input-18">Video Track 3:</label>
+                    <label for="file-input-26">Video Track 3:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-18" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-18').click()">Add Video</button>
+                        <input type="file" id="file-input-26" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-26').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="18">Remove</button>
-                        <button id="video-window-btn-18" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="26">Remove</button>
+                        <button id="video-window-btn-26" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -763,43 +1585,43 @@
                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-18" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-18" class="audio-device-select"></select>
+                            <label for="audio-device-select-26" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-26" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-18-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-18-left" class="channel-select"></select>
+                            <label for="channel-select-26-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-26-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-18-left">Volume:</label>
-                                <input type="range" id="volume-slider-18-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-18-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-18-left" class="mute-checkbox">
-                                <label for="mute-checkbox-18-left">Mute</label>
+                                <label for="volume-slider-26-left">Volume:</label>
+                                <input type="range" id="volume-slider-26-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-26-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-26-left" class="mute-checkbox">
+                                <label for="mute-checkbox-26-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-18-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-18-right" class="channel-select"></select>
+                            <label for="channel-select-26-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-26-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-18-right">Volume:</label>
-                                <input type="range" id="volume-slider-18-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-18-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-18-right" class="mute-checkbox">
-                                <label for="mute-checkbox-18-right">Mute</label>
+                                <label for="volume-slider-26-right">Volume:</label>
+                                <input type="range" id="volume-slider-26-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-26-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-26-right" class="mute-checkbox">
+                                <label for="mute-checkbox-26-right">Mute</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="track video-track" data-index="19">
+            <div class="track video-track" data-index="27">
                 <div class="track-info">
-                    <label for="file-input-19">Video Track 4:</label>
+                    <label for="file-input-27">Video Track 4:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-19" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-19').click()">Add Video</button>
+                        <input type="file" id="file-input-27" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-27').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="19">Remove</button>
-                        <button id="video-window-btn-19" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="27">Remove</button>
+                        <button id="video-window-btn-27" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -809,43 +1631,43 @@
                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-19" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-19" class="audio-device-select"></select>
+                            <label for="audio-device-select-27" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-27" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-19-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-19-left" class="channel-select"></select>
+                            <label for="channel-select-27-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-27-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-19-left">Volume:</label>
-                                <input type="range" id="volume-slider-19-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-19-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-19-left" class="mute-checkbox">
-                                <label for="mute-checkbox-19-left">Mute</label>
+                                <label for="volume-slider-27-left">Volume:</label>
+                                <input type="range" id="volume-slider-27-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-27-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-27-left" class="mute-checkbox">
+                                <label for="mute-checkbox-27-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-19-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-19-right" class="channel-select"></select>
+                            <label for="channel-select-27-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-27-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-19-right">Volume:</label>
-                                <input type="range" id="volume-slider-19-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-19-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-19-right" class="mute-checkbox">
-                                <label for="mute-checkbox-19-right">Mute</label>
+                                <label for="volume-slider-27-right">Volume:</label>
+                                <input type="range" id="volume-slider-27-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-27-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-27-right" class="mute-checkbox">
+                                <label for="mute-checkbox-27-right">Mute</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="track video-track" data-index="20">
+            <div class="track video-track" data-index="28">
                 <div class="track-info">
-                    <label for="file-input-20">Video Track 5:</label>
+                    <label for="file-input-28">Video Track 5:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-20" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-20').click()">Add Video</button>
+                        <input type="file" id="file-input-28" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-28').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="20">Remove</button>
-                        <button id="video-window-btn-20" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="28">Remove</button>
+                        <button id="video-window-btn-28" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -855,43 +1677,43 @@
                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-20" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-20" class="audio-device-select"></select>
+                            <label for="audio-device-select-28" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-28" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-20-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-20-left" class="channel-select"></select>
+                            <label for="channel-select-28-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-28-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-20-left">Volume:</label>
-                                <input type="range" id="volume-slider-20-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-20-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-20-left" class="mute-checkbox">
-                                <label for="mute-checkbox-20-left">Mute</label>
+                                <label for="volume-slider-28-left">Volume:</label>
+                                <input type="range" id="volume-slider-28-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-28-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-28-left" class="mute-checkbox">
+                                <label for="mute-checkbox-28-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-20-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-20-right" class="channel-select"></select>
+                            <label for="channel-select-28-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-28-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-20-right">Volume:</label>
-                                <input type="range" id="volume-slider-20-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-20-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-20-right" class="mute-checkbox">
-                                <label for="mute-checkbox-20-right">Mute</label>
+                                <label for="volume-slider-28-right">Volume:</label>
+                                <input type="range" id="volume-slider-28-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-28-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-28-right" class="mute-checkbox">
+                                <label for="mute-checkbox-28-right">Mute</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="track video-track" data-index="21">
+            <div class="track video-track" data-index="29">
                 <div class="track-info">
-                    <label for="file-input-21">Video Track 6:</label>
+                    <label for="file-input-29">Video Track 6:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-21" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-21').click()">Add Video</button>
+                        <input type="file" id="file-input-29" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-29').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="21">Remove</button>
-                        <button id="video-window-btn-21" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="29">Remove</button>
+                        <button id="video-window-btn-29" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -901,43 +1723,43 @@
                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-21" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-21" class="audio-device-select"></select>
+                            <label for="audio-device-select-29" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-29" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-21-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-21-left" class="channel-select"></select>
+                            <label for="channel-select-29-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-29-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-21-left">Volume:</label>
-                                <input type="range" id="volume-slider-21-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-21-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-21-left" class="mute-checkbox">
-                                <label for="mute-checkbox-21-left">Mute</label>
+                                <label for="volume-slider-29-left">Volume:</label>
+                                <input type="range" id="volume-slider-29-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-29-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-29-left" class="mute-checkbox">
+                                <label for="mute-checkbox-29-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-21-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-21-right" class="channel-select"></select>
+                            <label for="channel-select-29-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-29-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-21-right">Volume:</label>
-                                <input type="range" id="volume-slider-21-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-21-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-21-right" class="mute-checkbox">
-                                <label for="mute-checkbox-21-right">Mute</label>
+                                <label for="volume-slider-29-right">Volume:</label>
+                                <input type="range" id="volume-slider-29-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-29-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-29-right" class="mute-checkbox">
+                                <label for="mute-checkbox-29-right">Mute</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="track video-track" data-index="22">
+            <div class="track video-track" data-index="30">
                 <div class="track-info">
-                    <label for="file-input-22">Video Track 7:</label>
+                    <label for="file-input-30">Video Track 7:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-22" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-22').click()">Add Video</button>
+                        <input type="file" id="file-input-30" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-30').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="22">Remove</button>
-                        <button id="video-window-btn-22" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="30">Remove</button>
+                        <button id="video-window-btn-30" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -947,43 +1769,43 @@
                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-22" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-22" class="audio-device-select"></select>
+                            <label for="audio-device-select-30" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-30" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-22-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-22-left" class="channel-select"></select>
+                            <label for="channel-select-30-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-30-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-22-left">Volume:</label>
-                                <input type="range" id="volume-slider-22-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-22-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-22-left" class="mute-checkbox">
-                                <label for="mute-checkbox-22-left">Mute</label>
+                                <label for="volume-slider-30-left">Volume:</label>
+                                <input type="range" id="volume-slider-30-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-30-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-30-left" class="mute-checkbox">
+                                <label for="mute-checkbox-30-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-22-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-22-right" class="channel-select"></select>
+                            <label for="channel-select-30-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-30-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-22-right">Volume:</label>
-                                <input type="range" id="volume-slider-22-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-22-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-22-right" class="mute-checkbox">
-                                <label for="mute-checkbox-22-right">Mute</label>
+                                <label for="volume-slider-30-right">Volume:</label>
+                                <input type="range" id="volume-slider-30-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-30-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-30-right" class="mute-checkbox">
+                                <label for="mute-checkbox-30-right">Mute</label>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="track video-track" data-index="23">
+            <div class="track video-track" data-index="31">
                 <div class="track-info">
-                    <label for="file-input-23">Video Track 8:</label>
+                    <label for="file-input-31">Video Track 8:</label>
                     <div class="track-file-controls">
-                        <input type="file" id="file-input-23" class="file-input" accept="video/mp4">
-                        <button class="upload-btn" onclick="document.getElementById('file-input-23').click()">Add Video</button>
+                        <input type="file" id="file-input-31" class="file-input" accept="video/mp4, video/quicktime">
+                        <button class="upload-btn" onclick="document.getElementById('file-input-31').click()">Add Video</button>
                         <span class="file-name">No file selected</span>
-                        <button class="remove-btn" data-track-index="23">Remove</button>
-                        <button id="video-window-btn-23" class="video-window-btn">Open Video</button>
+                        <button class="remove-btn" data-track-index="31">Remove</button>
+                        <button id="video-window-btn-31" class="video-window-btn">Open Video</button>
                     </div>
                 </div>
                 <div class="timeline-wrapper">
@@ -993,29 +1815,29 @@
                                 <div class="track-controls">
                     <div class="video-track-controls">
                         <div class="video-device-row">
-                            <label for="audio-device-select-23" class="device-label">Audio Device:</label>
-                            <select id="audio-device-select-23" class="audio-device-select"></select>
+                            <label for="audio-device-select-31" class="device-label">Audio Device:</label>
+                            <select id="audio-device-select-31" class="audio-device-select"></select>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-23-left" class="channel-label">L Channel:</label>
-                            <select id="channel-select-23-left" class="channel-select"></select>
+                            <label for="channel-select-31-left" class="channel-label">L Channel:</label>
+                            <select id="channel-select-31-left" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-23-left">Volume:</label>
-                                <input type="range" id="volume-slider-23-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-23-left" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-23-left" class="mute-checkbox">
-                                <label for="mute-checkbox-23-left">Mute</label>
+                                <label for="volume-slider-31-left">Volume:</label>
+                                <input type="range" id="volume-slider-31-left" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-31-left" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-31-left" class="mute-checkbox">
+                                <label for="mute-checkbox-31-left">Mute</label>
                             </div>
                         </div>
                         <div class="video-control-row">
-                            <label for="channel-select-23-right" class="channel-label">R Channel:</label>
-                            <select id="channel-select-23-right" class="channel-select"></select>
+                            <label for="channel-select-31-right" class="channel-label">R Channel:</label>
+                            <select id="channel-select-31-right" class="channel-select"></select>
                             <div class="volume-control">
-                                <label for="volume-slider-23-right">Volume:</label>
-                                <input type="range" id="volume-slider-23-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
-                                <span id="volume-db-23-right" class="volume-db">0.0 dB</span>
-                                <input type="checkbox" id="mute-checkbox-23-right" class="mute-checkbox">
-                                <label for="mute-checkbox-23-right">Mute</label>
+                                <label for="volume-slider-31-right">Volume:</label>
+                                <input type="range" id="volume-slider-31-right" class="volume-slider" min="-60" max="30" value="0" step="0.1">
+                                <span id="volume-db-31-right" class="volume-db">0.0 dB</span>
+                                <input type="checkbox" id="mute-checkbox-31-right" class="mute-checkbox">
+                                <label for="mute-checkbox-31-right">Mute</label>
                             </div>
                         </div>
                     </div>
@@ -1031,6 +1853,7 @@
     <script src="js/volume.js"></script>
     <script src="js/master-volume.js"></script>
     <script src="js/artnet-timecode.js"></script>
+    <script src="js/midi-bpm.js"></script>
     <script src="js/udp-trigger.js"></script>
     <script src="js/osc-trigger.js"></script>
     <script src="js/master-timeline.js"></script>

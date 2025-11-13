@@ -1,5 +1,10 @@
+h1 {
+  margin-top: 0;
+}
+
 .controls,
 .artnet-settings,
+.midi-bpm-settings,
 .udp-trigger-settings,
 .osc-trigger-settings {
   border: 1px solid silver;
@@ -14,6 +19,7 @@
 
 .controls-title,
 .artnet-title,
+.midi-bpm-title,
 .udp-trigger-title,
 .osc-trigger-title {
   margin-bottom: 0.5rem;
@@ -39,9 +45,12 @@
   gap: 1rem;
 }
 
-#artnet-ip,
-#udp-trigger-ip,
-#osc-trigger-ip {
+/* Hide IP text input fields (not the select dropdowns) */
+input#artnet-ip,
+input#osc-trigger-ip,
+input[id^="osc-trigger-ip-"],
+input#udp-trigger-ip,
+input[id^="udp-trigger-ip-"] {
   display: none;
   margin-left: 0.5rem;
 }
@@ -136,6 +145,7 @@
 }
 
 .artnet-status,
+.midi-bpm-status,
 .udp-trigger-status,
 .osc-trigger-status {
   color: #000;
@@ -144,6 +154,7 @@
 }
 
 .artnet-status.connected,
+.midi-bpm-status.enabled,
 .udp-trigger-status.enabled,
 .osc-trigger-status.enabled {
   color: #00ff00;
@@ -151,6 +162,7 @@
 }
 
 .artnet-status.error,
+.midi-bpm-status.error,
 .udp-trigger-status.error,
 .osc-trigger-status.error {
   color: #ff0000;

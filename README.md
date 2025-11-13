@@ -1,6 +1,6 @@
-# A/V-Player (v.1.3-10-2025)
+# A/V-Player (v.1.4-11-2025)
 
-"A/V-Player" with 16-channel audio and 8-channel video (each video track includes 2-channel audio), individual audio device/channel/volume mapping, a master timeline with loop function, Timecode via Art-Net, UDP- and OSC-Trigger-Sender (e.g., for additional BrightSign Mediaplayer in the same network – an `autorun.brs` (inside the `Brightsign-UDP` folder) for receiving UDP triggers is included).
+"A/V-Player" with 16-channel audio and 8-channel video (each video track includes 2-channel audio), individual audio device/channel/volume mapping, a master timeline with loop function, Timecode via Art-Net, MIDI-BPM-Clock, 8x UDP- and 8x OSC-Trigger-Sender (e.g., for additional BrightSign Mediaplayer in the same network – an `autorun.brs` (inside the `Brightsign-UDP` folder) for receiving UDP triggers is included).
 
 by Erik Anton Reinhardt.<br>
 [MIT License]
@@ -19,7 +19,7 @@ node server.js
 **Note**: <br>
 
 - The web interface opens by default at `localhost:3001`.
-- Supported file formats: `MP4`, `MP3`, `WAV`.
+- Supported file formats: `MP3`, `WAV`, `MP4`, `MOV`.
 - Tested primarily with Google Chrome.
 - All important information on how to handle the BrightSign script can be found as comments within the script itself.
 - Make sure your computer can handle multiple media players running at the same time; otherwise, it could cause lag.

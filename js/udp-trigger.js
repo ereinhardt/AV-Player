@@ -1,6 +1,7 @@
 class UDPTrigger {
   // Initialize UDP trigger with default settings and DOM element cache
-  constructor() {
+  constructor(index = 0) {
+    this.index = index;
     this.enabled = false;
     this.ip = "127.0.0.1";
     this.port = 9998;
@@ -9,16 +10,19 @@ class UDPTrigger {
     this.ws = null;
     this.isConnected = false;
     this.reconnectTimer = null;
+    this.lastTriggeredTime = -1; // Track last triggered time to avoid duplicates
 
+    // Use index-specific element IDs
+    const suffix = index > 0 ? `-${index}` : "";
     this.elements = {
-      enabled: document.getElementById("udp-trigger-enabled"),
-      ip: document.getElementById("udp-trigger-ip"),
-      port: document.getElementById("udp-trigger-port"),
-      message: document.getElementById("udp-trigger-message"),
-      time: document.getElementById("udp-trigger-time"),
-      ipPreset: document.getElementById("udp-trigger-ip-preset"),
-      apply: document.getElementById("udp-trigger-apply"),
-      status: document.getElementById("udp-trigger-status"),
+      enabled: document.getElementById(`udp-trigger-enabled${suffix}`),
+      ip: document.getElementById(`udp-trigger-ip${suffix}`),
+      port: document.getElementById(`udp-trigger-port${suffix}`),
+      message: document.getElementById(`udp-trigger-message${suffix}`),
+      time: document.getElementById(`udp-trigger-time${suffix}`),
+      ipPreset: document.getElementById(`udp-trigger-ip-preset${suffix}`),
+      apply: document.getElementById(`udp-trigger-apply${suffix}`),
+      status: document.getElementById(`udp-trigger-status${suffix}`),
     };
 
     this.setupUI();
@@ -82,7 +86,9 @@ class UDPTrigger {
       (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "udp-trigger-sent") {
+          // Check if this message is for this specific trigger
+          if (data.type === "udp-trigger-sent" && 
+              (data.details?.index === this.index || (data.details?.index === undefined && this.index === 0))) {
             this.showSentStatus(data.details);
           }
         } catch (e) {}
@@ -160,6 +166,7 @@ class UDPTrigger {
       this.ws.send(
         JSON.stringify({
           type: "udp-trigger-config",
+          index: this.index,
           enabled: this.enabled,
           ip: this.ip,
           port: this.port,
@@ -197,12 +204,30 @@ class UDPTrigger {
     this.ws.send(
       JSON.stringify({
         type: "udp-trigger-send",
+        index: this.index,
         action,
         ip: this.ip,
         port: this.port,
         message,
       })
     );
+  }
+
+  // Check if trigger should fire at current time
+  checkAndTrigger(currentTime, isPlaying) {
+    if (!this.enabled || !isPlaying) return;
+
+    const tolerance = 0.5; // 500ms tolerance
+    if (Math.abs(currentTime - this.triggerTime) < tolerance && 
+        this.lastTriggeredTime !== this.triggerTime) {
+      this.lastTriggeredTime = this.triggerTime;
+      this.sendTrigger("start");
+    }
+  }
+
+  // Reset trigger state (for loop restart or seek)
+  resetTrigger() {
+    this.lastTriggeredTime = -1;
   }
 
   // Parse time string (HH:MM:SS) to seconds
@@ -235,31 +260,66 @@ class UDPTrigger {
   }
 }
 
-// Make UDP Trigger globally accessible
-window.udpTrigger = null;
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (window.udpTrigger) {
-    window.udpTrigger.destroy();
+// UDP Trigger Manager for handling multiple triggers
+class UDPTriggerManager {
+  constructor(count = 8) {
+    this.triggers = [];
+    for (let i = 0; i < count; i++) {
+      this.triggers.push(new UDPTrigger(i));
+    }
   }
 
-  window.udpTrigger = new UDPTrigger();
+  // Check all triggers at current time
+  checkAllTriggers(currentTime, isPlaying) {
+    this.triggers.forEach(trigger => trigger.checkAndTrigger(currentTime, isPlaying));
+  }
+
+  // Reset all triggers (for loop restart or seek)
+  resetAllTriggers() {
+    this.triggers.forEach(trigger => trigger.resetTrigger());
+  }
+
+  // Get a specific trigger by index
+  getTrigger(index) {
+    return this.triggers[index];
+  }
+
+  // Destroy all triggers
+  destroy() {
+    this.triggers.forEach(trigger => trigger.destroy());
+    this.triggers = [];
+  }
+}
+
+// Make UDP Trigger Manager globally accessible
+window.udpTriggerManager = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.udpTriggerManager) {
+    window.udpTriggerManager.destroy();
+  }
+
+  window.udpTriggerManager = new UDPTriggerManager(8);
+  
+  // Keep backward compatibility
+  window.udpTrigger = window.udpTriggerManager.getTrigger(0);
 });
 
 window.addEventListener("beforeunload", () => {
-  if (window.udpTrigger) {
-    window.udpTrigger.destroy();
+  if (window.udpTriggerManager) {
+    window.udpTriggerManager.destroy();
+    window.udpTriggerManager = null;
     window.udpTrigger = null;
   }
 });
 
 // Cleanup on page visibility change (when user switches tabs)
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && window.udpTrigger) {
+  if (document.hidden && window.udpTriggerManager) {
     // Temporarily close WebSocket when tab is hidden to save resources
-    window.udpTrigger.closeWebSocket();
-  } else if (!document.hidden && window.udpTrigger) {
+    window.udpTriggerManager.triggers.forEach(trigger => trigger.closeWebSocket());
+  } else if (!document.hidden && window.udpTriggerManager) {
     // Reconnect when tab becomes visible again
-    window.udpTrigger.connectToServer();
+    window.udpTriggerManager.triggers.forEach(trigger => trigger.connectToServer());
   }
 });

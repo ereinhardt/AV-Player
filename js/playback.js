@@ -85,6 +85,11 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     window.isLoopRestarting = true;
     if (window.pauseVideoSync) window.pauseVideoSync();
 
+    // Restart MIDI Clock on loop (back to beat 1)
+    if (window.midiBpm?.enabled && window.midiBpm.isPlaying) {
+      window.midiBpm.restart();
+    }
+
     audioElements.forEach((audio) => {
       if (audio) {
         audio.pause();
@@ -143,6 +148,11 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
     playPauseButton.classList.toggle("playing", isPlaying);
 
     if (isPlaying) {
+      // Start MIDI Clock if enabled
+      if (window.midiBpm?.enabled) {
+        window.midiBpm.start();
+      }
+
       audioElements.forEach((audio, index) => {
         if (audio) {
           const isWaiting = audioWaitingStates[index];
@@ -164,6 +174,11 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
         }, 1000);
       }
     } else {
+      // Stop MIDI Clock if enabled
+      if (window.midiBpm?.enabled) {
+        window.midiBpm.stop();
+      }
+
       audioElements.forEach((audio) => audio?.pause());
     }
   });
@@ -175,6 +190,11 @@ function setupPlaybackControls(audioElements, audioContextContainer) {
 
     playPauseButton.textContent = "Play";
     playPauseButton.classList.remove("playing");
+
+    // Stop MIDI Clock if enabled
+    if (window.midiBpm?.enabled) {
+      window.midiBpm.stop();
+    }
 
     resetStates();
     window.isVideoReset = true;

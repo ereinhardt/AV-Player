@@ -119,16 +119,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const loopCheckbox = document.getElementById("loop-checkbox");
 
   let audioContextContainer = {
-    contexts: new Array(24).fill(null),
-    masterGains: new Array(24).fill(null),
+    contexts: new Array(32).fill(null),
+    masterGains: new Array(32).fill(null),
     masterVolume: 1.0,
   };
-  let audioElements = new Array(24).fill(null);
-  let audioSources = new Array(24).fill(null);
+  let audioElements = new Array(32).fill(null);
+  let audioSources = new Array(32).fill(null);
 
-  // Make audioElements globally available for cleanup
+  // Make audioElements and audioContextContainer globally available
   window.audioElements = audioElements;
   window.audioSources = audioSources;
+  window.audioContextContainer = audioContextContainer;
 
   await requestAudioPermissions();
   getAudioDevices();

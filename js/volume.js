@@ -40,7 +40,7 @@ function setupVolumeControls(tracks, audioSources) {
   tracks.forEach((track) => {
     const index = parseInt(track.getAttribute("data-index"));
     const isVideoTrack =
-      index >= 16 && index <= 23 && track.classList.contains("video-track");
+      index >= 24 && index <= 31 && track.classList.contains("video-track");
 
     if (isVideoTrack) {
       ["left", "right"].forEach((side) =>

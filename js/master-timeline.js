@@ -8,9 +8,6 @@ function setupMasterTimeline(audioElements) {
     return;
   }
 
-  // Track last triggered times to avoid duplicate triggers
-  let lastUdpTriggerTime = -1;
-  let lastOscTriggerTime = -1;
   let lastCurrentTime = 0;
 
   // Update timeline display and send Art-Net timecode based on longest audio track
@@ -31,32 +28,28 @@ function setupMasterTimeline(audioElements) {
 
       // Reset triggers if we've jumped backward in time (loop restart or manual seek)
       if (currentTime < lastCurrentTime - 1) {
-        lastUdpTriggerTime = -1;
-        lastOscTriggerTime = -1;
+        // Reset all UDP triggers
+        if (window.udpTriggerManager) {
+          window.udpTriggerManager.resetAllTriggers();
+        }
+        // Reset all OSC triggers
+        if (window.oscTriggerManager) {
+          window.oscTriggerManager.resetAllTriggers();
+        }
       }
       lastCurrentTime = currentTime;
 
       // Only send triggers if audio is actually playing
       const isPlaying = !longestAudio.paused && !longestAudio.ended;
 
-      // Check and send UDP trigger at specified time
-      if (isPlaying && window.udpTrigger?.enabled && window.udpTrigger.triggerTime !== undefined) {
-        const triggerTime = window.udpTrigger.triggerTime;
-        const tolerance = 0.5; // 500ms tolerance
-        if (Math.abs(currentTime - triggerTime) < tolerance && lastUdpTriggerTime !== triggerTime) {
-          lastUdpTriggerTime = triggerTime;
-          window.udpTrigger.sendTrigger("start");
-        }
+      // Check and send all UDP triggers at their specified times
+      if (window.udpTriggerManager) {
+        window.udpTriggerManager.checkAllTriggers(currentTime, isPlaying);
       }
 
-      // Check and send OSC trigger at specified time
-      if (isPlaying && window.oscTrigger?.enabled && window.oscTrigger.triggerTime !== undefined) {
-        const triggerTime = window.oscTrigger.triggerTime;
-        const tolerance = 0.5; // 500ms tolerance
-        if (Math.abs(currentTime - triggerTime) < tolerance && lastOscTriggerTime !== triggerTime) {
-          lastOscTriggerTime = triggerTime;
-          window.oscTrigger.sendTrigger("start");
-        }
+      // Check and send all OSC triggers at their specified times
+      if (window.oscTriggerManager) {
+        window.oscTriggerManager.checkAllTriggers(currentTime, isPlaying);
       }
 
       if (currentTime > 0 && window.artNetTimecode?.sendTimecode) {

@@ -25,7 +25,7 @@ function cleanupAllAudioSources(audioSources) {
 
 function validateFileType(file, isVideoTrack, index) {
   const expectedType = isVideoTrack ? "video/" : "audio/";
-  const fileType = isVideoTrack ? "video file (MP4)" : "audio file (MP3, WAV)";
+  const fileType = isVideoTrack ? "video file (MP4, MOV)" : "audio file (MP3, WAV)";
 
   if (!file.type.startsWith(expectedType)) {
     alert(`Please select a ${fileType}. Track ${index} detected as ${isVideoTrack ? "video" : "audio"} track but got ${file.type}`);
