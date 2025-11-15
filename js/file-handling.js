@@ -55,18 +55,24 @@ async function setupAudioContext(index, audioContextContainer, audioDeviceSelect
 
 function setupTimelineHandlers(audio, timelineProgress, timeDisplay) {
   audio.addEventListener("loadedmetadata", () => {
-    timeDisplay.textContent = `${formatTime(0)} / ${formatTime(audio.duration)}`;
+    timeDisplay.textContent = `${formatTime(0)} | ${formatTime(audio.duration)}`;
     document.dispatchEvent(new Event("fileLoaded"));
   });
+
+  // Clear existing interval if any
+  if (audio._timelineUpdateInterval) {
+    clearInterval(audio._timelineUpdateInterval);
+    audio._timelineUpdateInterval = null;
+  }
 
   // Use interval for smoother progress bar updates (50ms = 20fps)
   const updateInterval = setInterval(() => {
     if (audio.duration && isFinite(audio.duration)) {
       timelineProgress.value = (audio.currentTime / audio.duration) * 100;
-      timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+      timeDisplay.textContent = `${formatTime(audio.currentTime)} | ${formatTime(audio.duration)}`;
     } else {
       timelineProgress.value = 0;
-      timeDisplay.textContent = `00:00:00 / 00:00:00`;
+      timeDisplay.textContent = `00:00:00 | 00:00:00`;
     }
   }, 50);
 
@@ -91,6 +97,11 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
 
       // Cleanup existing audio
       if (audioElements[index]) {
+        // Clear timeline update interval
+        if (audioElements[index]._timelineUpdateInterval) {
+          clearInterval(audioElements[index]._timelineUpdateInterval);
+          audioElements[index]._timelineUpdateInterval = null;
+        }
         if (audioElements[index].src?.startsWith("blob:")) {
           URL.revokeObjectURL(audioElements[index].src);
         }
@@ -105,7 +116,7 @@ function setupFileHandling(tracks, audioElements, audioSources, audioContextCont
 
       // Reset UI
       timelineProgress.value = 0;
-      timeDisplay.textContent = "00:00:00 / 00:00:00";
+      timeDisplay.textContent = "00:00:00 | 00:00:00";
       fileNameSpan.textContent = file.name;
 
       // Create audio element
@@ -220,7 +231,7 @@ function removeFileFromTrack(index, audioElements, audioSources, audioContextCon
   if (fileInput) fileInput.value = "";
   if (fileNameSpan) fileNameSpan.textContent = "No file selected";
   if (timelineProgress) timelineProgress.value = 0;
-  if (timeDisplay) timeDisplay.textContent = "00:00:00 / 00:00:00";
+  if (timeDisplay) timeDisplay.textContent = "00:00:00 | 00:00:00";
 
   // Cleanup video references
   delete window[`_pendingVideoFile_${index}`];

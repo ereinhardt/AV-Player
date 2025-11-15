@@ -28,13 +28,13 @@
                 </div>
                 <div class="timeline-wrapper master-timeline-wrapper">
                     <progress id="master-timeline-progress" class="timeline-progress" max="100" value="0"></progress>
-                    <span id="master-time-display" class="time-display">00:00:00 / 00:00:00</span>
+                    <span id="master-time-display" class="time-display">00:00:00 | 00:00:00</span>
                 </div>
             </div>
         </div>
         
         <div class="artnet-settings">
-            <div class="artnet-title">Art-Net Timecode (via UDP): <span id="artnet-status-display" class="artnet-status">(127.0.0.1:6454 / 25fps / 00:00:00:00)</span></div>
+            <div class="artnet-title">Art-Net Timecode (via UDP): <span id="artnet-status-display" class="artnet-status">(127.0.0.1:6454 | 25fps | 00:00:00:00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="artnet-enabled" checked>
                 <label for="artnet-enabled">Enable Art-Net Timecode</label>
@@ -83,6 +83,10 @@
                 <input type="number" id="midi-bpm-input" min="20" max="400" value="120" step="0.1" title="Set BPM for MIDI Clock">
             </div>
             <div class="setting-group">
+                <label for="midi-start-time">First Beat Timing:</label>
+                <input type="text" id="midi-start-time" value="00:00:00" placeholder="00:00:00" title="Time when the first beat (beat 1) should start">
+            </div>
+            <div class="setting-group">
                 <label for="metronome-time-signature">Metronome Time Signature:</label>
                 <select id="metronome-time-signature">
                     <option value="2/4">2/4</option>
@@ -96,17 +100,25 @@
                 </select>
             </div>
             <div class="setting-group">
-                <label for="metronome-volume">Metronome Volume:</label>
-                <input type="range" id="metronome-volume" min="-60" max="30" value="0" step="0.1">
-                <span id="metronome-volume-display" class="volume-db">0.0 dB</span>
-                <input type="checkbox" id="metronome-mute" class="mute-checkbox" checked>
-                <label for="metronome-mute">Mute</label>
-            </div>
-            <div class="setting-group">
-                <label for="metronome-device-select">Metronome Audio Device:</label>
-                <select id="metronome-device-select" class="audio-device-select">
-                    <option value="">Default Audio Output</option>
-                </select>
+                <div class="audio-device-row">
+                    <label for="metronome-device-select">Metronome Audio Device:</label>
+                    <select id="metronome-device-select" class="audio-device-select">
+                        <option value="">Default Audio Output</option>
+                    </select>
+                </div>
+                <div class="audio-control-row">
+                    <label for="metronome-channel-select">Channel:</label>
+                    <select id="metronome-channel-select" class="channel-select">
+                        <option value="1">Channel 1</option>
+                    </select>
+                    <div class="volume-control">
+                        <label for="metronome-volume">Volume:</label>
+                        <input type="range" id="metronome-volume" min="-60" max="30" value="0" step="0.1">
+                        <span id="metronome-volume-display" class="volume-db">0.0 dB</span>
+                        <input type="checkbox" id="metronome-mute" class="mute-checkbox" checked>
+                        <label for="metronome-mute">Mute</label>
+                    </div>
+                </div>
             </div>
             <div class="setting-group">
                 <button id="midi-bpm-apply" class="apply-settings-btn">Apply Settings</button>
@@ -114,7 +126,7 @@
         </div>
 
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 1: <span id="udp-trigger-status" class="udp-trigger-status">(Auto Broadcast:9998 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 1: <span id="udp-trigger-status" class="udp-trigger-status">(Auto Broadcast:9998 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled">
                 <label for="udp-trigger-enabled">Enable UDP Trigger 1</label>
@@ -145,7 +157,7 @@
             </div>
         </div>
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 2: <span id="udp-trigger-status-1" class="udp-trigger-status">(Auto Broadcast:9999 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 2: <span id="udp-trigger-status-1" class="udp-trigger-status">(Auto Broadcast:9999 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled-1">
                 <label for="udp-trigger-enabled-1">Enable UDP Trigger 2</label>
@@ -176,7 +188,7 @@
             </div>
         </div>
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 3: <span id="udp-trigger-status-2" class="udp-trigger-status">(Auto Broadcast:10000 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 3: <span id="udp-trigger-status-2" class="udp-trigger-status">(Auto Broadcast:10000 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled-2">
                 <label for="udp-trigger-enabled-2">Enable UDP Trigger 3</label>
@@ -207,7 +219,7 @@
             </div>
         </div>
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 4: <span id="udp-trigger-status-3" class="udp-trigger-status">(Auto Broadcast:10001 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 4: <span id="udp-trigger-status-3" class="udp-trigger-status">(Auto Broadcast:10001 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled-3">
                 <label for="udp-trigger-enabled-3">Enable UDP Trigger 4</label>
@@ -238,7 +250,7 @@
             </div>
         </div>
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 5: <span id="udp-trigger-status-4" class="udp-trigger-status">(Auto Broadcast:10002 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 5: <span id="udp-trigger-status-4" class="udp-trigger-status">(Auto Broadcast:10002 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled-4">
                 <label for="udp-trigger-enabled-4">Enable UDP Trigger 5</label>
@@ -269,7 +281,7 @@
             </div>
         </div>
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 6: <span id="udp-trigger-status-5" class="udp-trigger-status">(Auto Broadcast:10003 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 6: <span id="udp-trigger-status-5" class="udp-trigger-status">(Auto Broadcast:10003 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled-5">
                 <label for="udp-trigger-enabled-5">Enable UDP Trigger 6</label>
@@ -300,7 +312,7 @@
             </div>
         </div>
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 7: <span id="udp-trigger-status-6" class="udp-trigger-status">(Auto Broadcast:10004 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 7: <span id="udp-trigger-status-6" class="udp-trigger-status">(Auto Broadcast:10004 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled-6">
                 <label for="udp-trigger-enabled-6">Enable UDP Trigger 7</label>
@@ -331,7 +343,7 @@
             </div>
         </div>
         <div class="udp-trigger-settings">
-            <div class="udp-trigger-title">UDP Trigger 8: <span id="udp-trigger-status-7" class="udp-trigger-status">(Auto Broadcast:10005 / START)</span></div>
+            <div class="udp-trigger-title">UDP Trigger 8: <span id="udp-trigger-status-7" class="udp-trigger-status">(Auto Broadcast:10005 | START)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="udp-trigger-enabled-7">
                 <label for="udp-trigger-enabled-7">Enable UDP Trigger 8</label>
@@ -362,7 +374,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 1: <span id="osc-trigger-status" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 1: <span id="osc-trigger-status" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled">
                 <label for="osc-trigger-enabled">Enable OSC Trigger 1</label>
@@ -405,7 +417,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 2: <span id="osc-trigger-status-1" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 2: <span id="osc-trigger-status-1" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled-1">
                 <label for="osc-trigger-enabled-1">Enable OSC Trigger 2</label>
@@ -448,7 +460,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 3: <span id="osc-trigger-status-2" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 3: <span id="osc-trigger-status-2" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled-2">
                 <label for="osc-trigger-enabled-2">Enable OSC Trigger 3</label>
@@ -491,7 +503,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 4: <span id="osc-trigger-status-3" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 4: <span id="osc-trigger-status-3" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled-3">
                 <label for="osc-trigger-enabled-3">Enable OSC Trigger 4</label>
@@ -534,7 +546,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 5: <span id="osc-trigger-status-4" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 5: <span id="osc-trigger-status-4" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled-4">
                 <label for="osc-trigger-enabled-4">Enable OSC Trigger 5</label>
@@ -577,7 +589,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 6: <span id="osc-trigger-status-5" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 6: <span id="osc-trigger-status-5" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled-5">
                 <label for="osc-trigger-enabled-5">Enable OSC Trigger 6</label>
@@ -620,7 +632,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 7: <span id="osc-trigger-status-6" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 7: <span id="osc-trigger-status-6" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled-6">
                 <label for="osc-trigger-enabled-6">Enable OSC Trigger 7</label>
@@ -663,7 +675,7 @@
             </div>
         </div>
         <div class="osc-trigger-settings">
-            <div class="osc-trigger-title">OSC Trigger (via UDP) 8: <span id="osc-trigger-status-7" class="osc-trigger-status">(127.0.0.1:7000 / 00:00:00 / /trigger/start ,f 1.00)</span></div>
+            <div class="osc-trigger-title">OSC Trigger (via UDP) 8: <span id="osc-trigger-status-7" class="osc-trigger-status">(127.0.0.1:7000 | 00:00:00 | /trigger/start ,f 1.00)</span></div>
             <div class="setting-group">
                 <input type="checkbox" id="osc-trigger-enabled-7">
                 <label for="osc-trigger-enabled-7">Enable OSC Trigger 8</label>
@@ -718,7 +730,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -750,7 +762,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -782,7 +794,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -814,7 +826,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -846,7 +858,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -878,7 +890,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -910,7 +922,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -942,7 +954,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -974,7 +986,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1006,7 +1018,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1038,7 +1050,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1070,7 +1082,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1102,7 +1114,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1134,7 +1146,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1166,7 +1178,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1198,7 +1210,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1230,7 +1242,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1262,7 +1274,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1294,7 +1306,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1326,7 +1338,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1358,7 +1370,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1390,7 +1402,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1422,7 +1434,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1454,7 +1466,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="audio-device-row">
@@ -1488,7 +1500,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="video-track-controls">
@@ -1534,7 +1546,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="video-track-controls">
@@ -1580,7 +1592,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="video-track-controls">
@@ -1626,7 +1638,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="video-track-controls">
@@ -1672,7 +1684,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="video-track-controls">
@@ -1718,7 +1730,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="video-track-controls">
@@ -1764,7 +1776,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                 <div class="track-controls">
                     <div class="video-track-controls">
@@ -1810,7 +1822,7 @@
                 </div>
                 <div class="timeline-wrapper">
                     <progress class="timeline-progress" max="100" value="0"></progress>
-                    <span class="time-display">00:00:00 / 00:00:00</span>
+                    <span class="time-display">00:00:00 | 00:00:00</span>
                 </div>
                                 <div class="track-controls">
                     <div class="video-track-controls">

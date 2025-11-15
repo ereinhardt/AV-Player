@@ -121,7 +121,7 @@ class UDPTrigger {
     if (!this.elements.status) return;
 
     const timeStr = this.formatTime(this.triggerTime || 0);
-    this.elements.status.textContent = `(${details.ip}:${details.port} / ${timeStr} / ${details.message} - SENT)`;
+    this.elements.status.textContent = `(${details.ip}:${details.port} | ${timeStr} | ${details.message} - SENT)`;
     this.elements.status.className = "udp-trigger-status enabled";
     setTimeout(() => this.updateStatus(), 2000);
   }
@@ -187,7 +187,7 @@ class UDPTrigger {
       ? "enabled"
       : "disabled";
     const timeStr = this.formatTime(this.triggerTime || 0);
-    this.elements.status.textContent = `(${this.ip}:${this.port} / ${timeStr} / ${this.message})`;
+    this.elements.status.textContent = `(${this.ip}:${this.port} | ${timeStr} | ${this.message})`;
     this.elements.status.className = `udp-trigger-status ${statusClass}`;
   }
 

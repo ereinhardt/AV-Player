@@ -21,7 +21,7 @@ function setupMasterTimeline(audioElements) {
     if (longestAudio?.duration) {
       const { currentTime, duration } = longestAudio;
 
-      timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(
+      timeDisplay.textContent = `${formatTime(currentTime)} | ${formatTime(
         duration
       )}`;
       progressBar.value = (currentTime / duration) * 100;
@@ -35,6 +35,10 @@ function setupMasterTimeline(audioElements) {
         // Reset all OSC triggers
         if (window.oscTriggerManager) {
           window.oscTriggerManager.resetAllTriggers();
+        }
+        // Reset MIDI Clock first beat flag
+        if (window.midiBpm) {
+          window.midiBpm.resetFirstBeat();
         }
       }
       lastCurrentTime = currentTime;
@@ -52,11 +56,16 @@ function setupMasterTimeline(audioElements) {
         window.oscTriggerManager.checkAllTriggers(currentTime, isPlaying);
       }
 
+      // Check MIDI Clock start time for first beat
+      if (window.midiBpm) {
+        window.midiBpm.checkStartTime(currentTime);
+      }
+
       if (currentTime > 0 && window.artNetTimecode?.sendTimecode) {
         window.artNetTimecode.sendTimecode(currentTime, duration);
       }
     } else {
-      timeDisplay.textContent = "00:00:00 / 00:00:00";
+      timeDisplay.textContent = "00:00:00 | 00:00:00";
       progressBar.value = 0;
     }
   };

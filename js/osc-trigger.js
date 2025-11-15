@@ -137,7 +137,7 @@ class OSCTrigger {
       : details.value;
     const timeStr = this.formatTime(this.triggerTime || 0);
     
-    this.elements.status.textContent = `(${details.ip}:${details.port} / ${timeStr} / ${details.oscAddress} ${typeTag} ${valueDisplay} - SENT)`;
+    this.elements.status.textContent = `(${details.ip}:${details.port} | ${timeStr} | ${details.oscAddress} ${typeTag} ${valueDisplay} - SENT)`;
     this.elements.status.className = "osc-trigger-status enabled";
     setTimeout(() => this.updateStatus(), 2000);
   }

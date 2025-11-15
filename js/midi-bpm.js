@@ -16,15 +16,22 @@ class MIDIBpm {
     this.beatCounter = 0;
     this.beatsPerBar = 4;
     this.bpmValid = true;
+    this.startTime = 0; // Time in seconds when first beat should start
+    this.firstBeatTriggered = false;
+    this.lastTriggeredBeat = -1; // Track last triggered beat to avoid duplicates
+    this.midiStartSent = false; // Track if MIDI start has been sent
+    this.metronomeChannel = 1; // Default channel 1 (mono)
 
     this.elements = {
       enabled: document.getElementById("midi-bpm-enabled"),
       deviceSelect: document.getElementById("midi-device-select"),
       bpmInput: document.getElementById("midi-bpm-input"),
+      startTimeInput: document.getElementById("midi-start-time"),
       applyBtn: document.getElementById("midi-bpm-apply"),
       status: document.getElementById("midi-bpm-status-display"),
       metronomeMute: document.getElementById("metronome-mute"),
       metronomeDeviceSelect: document.getElementById("metronome-device-select"),
+      metronomeChannelSelect: document.getElementById("metronome-channel-select"),
       metronomeVolume: document.getElementById("metronome-volume"),
       metronomeVolumeDisplay: document.getElementById("metronome-volume-display"),
       metronomeTimeSignature: document.getElementById("metronome-time-signature"),
@@ -49,45 +56,53 @@ class MIDIBpm {
   }
 
   populateMIDIDevices() {
-    if (!this.elements.deviceSelect || !this.midiAccess) return;
+    const { deviceSelect } = this.elements;
+    if (!deviceSelect || !this.midiAccess) return;
 
     const outputs = Array.from(this.midiAccess.outputs.values());
-    this.elements.deviceSelect.innerHTML = outputs.length 
+    deviceSelect.innerHTML = outputs.length 
       ? outputs.map(o => `<option value="${o.id}">${o.name || `MIDI Output ${o.id}`}</option>`).join('')
       : '<option value="">No MIDI devices available</option>';
 
     if (!this.selectedOutput && outputs.length) {
       this.selectedOutput = outputs[0];
-      this.elements.deviceSelect.value = outputs[0].id;
+      deviceSelect.value = outputs[0].id;
     }
     this.updateStatus();
   }
 
   setupUI() {
-    const { enabled, bpmInput, applyBtn, metronomeMute, metronomeVolume, metronomeVolumeDisplay, metronomeTimeSignature } = this.elements;
+    const { enabled, bpmInput, applyBtn, metronomeMute, metronomeVolume, metronomeVolumeDisplay, metronomeTimeSignature, startTimeInput } = this.elements;
     const isTimelinePlaying = () => document.getElementById("play-pause-button")?.classList.contains("playing");
 
-    if (enabled) {
-      enabled.addEventListener("change", () => {
-        this.enabled = enabled.checked;
-        this.updateStatus();
-        if (this.enabled && isTimelinePlaying() && !this.isPlaying) this.start();
-        else if (!this.enabled && this.isPlaying) this.stop();
-      });
-      enabled.checked = this.enabled;
-    }
+    enabled?.addEventListener("change", () => {
+      this.enabled = enabled.checked;
+      this.updateStatus();
+      if (this.enabled && isTimelinePlaying() && !this.isPlaying) this.start();
+      else if (!this.enabled && this.isPlaying) this.stop();
+    });
+    if (enabled) enabled.checked = this.enabled;
 
     if (bpmInput) bpmInput.value = this.bpm;
+    if (startTimeInput) {
+      startTimeInput.value = this.formatTime(this.startTime);
+      startTimeInput.addEventListener("blur", () => {
+        startTimeInput.value = this.formatTime(this.parseTime(startTimeInput.value));
+      });
+    }
 
     applyBtn?.addEventListener("click", () => {
-      const newBPM = parseFloat(bpmInput.value) || 120;
+      const newBPM = parseFloat(bpmInput?.value) || 120;
       this.bpmValid = newBPM >= 20 && newBPM <= 400;
       this.bpm = newBPM;
       
-      // Update time signature
+      if (startTimeInput) {
+        this.startTime = this.parseTime(startTimeInput.value);
+        startTimeInput.value = this.formatTime(this.startTime);
+      }
+      
       if (metronomeTimeSignature) {
-        const [numerator] = metronomeTimeSignature.value.split('/').map(Number);
-        this.beatsPerBar = numerator;
+        this.beatsPerBar = parseInt(metronomeTimeSignature.value.split('/')[0]) || 4;
       }
       
       if (!this.bpmValid && this.isPlaying) this.stop();
@@ -99,13 +114,11 @@ class MIDIBpm {
       this.updateStatus();
     });
 
-    if (metronomeMute) {
-      metronomeMute.addEventListener("change", () => {
-        this.metronomeMuted = metronomeMute.checked;
-        this.updateMetronomeVolumeDisplay();
-      });
-      metronomeMute.checked = this.metronomeMuted;
-    }
+    metronomeMute?.addEventListener("change", () => {
+      this.metronomeMuted = metronomeMute.checked;
+      this.updateMetronomeVolumeDisplay();
+    });
+    if (metronomeMute) metronomeMute.checked = this.metronomeMuted;
 
     if (metronomeVolume && metronomeVolumeDisplay) {
       metronomeVolume.value = this.metronomeDB;
@@ -117,20 +130,18 @@ class MIDIBpm {
       });
     }
 
-    if (metronomeTimeSignature) {
-      metronomeTimeSignature.value = "4/4";
-    }
-
+    if (metronomeTimeSignature) metronomeTimeSignature.value = "4/4";
     this.updateMetronomeVolumeDisplay();
     this.updateStatus();
   }
 
   updateMetronomeVolumeDisplay() {
     const { metronomeVolume, metronomeVolumeDisplay, metronomeMute } = this.elements;
-    if (!metronomeVolume || !metronomeVolumeDisplay || !metronomeMute) return;
+    if (!metronomeVolume || !metronomeVolumeDisplay) return;
     
-    metronomeVolumeDisplay.textContent = metronomeMute.checked ? "-∞ dB" : `${this.metronomeDB.toFixed(1)} dB`;
-    metronomeVolume.disabled = metronomeMute.checked;
+    const muted = metronomeMute?.checked;
+    metronomeVolumeDisplay.textContent = muted ? "-∞ dB" : `${this.metronomeDB.toFixed(1)} dB`;
+    metronomeVolume.disabled = muted;
   }
 
   applySettings() {
@@ -140,41 +151,51 @@ class MIDIBpm {
     this.selectedOutput = deviceSelect.value ? this.midiAccess.outputs.get(deviceSelect.value) : null;
     
     if (metronomeDeviceSelect?.value && this.metronomeAudioContext?.setSinkId) {
-      this.metronomeAudioContext.setSinkId(metronomeDeviceSelect.value)
-        .catch(err => console.warn('Could not set metronome audio output device:', err));
+      this.metronomeAudioContext.setSinkId(metronomeDeviceSelect.value).catch(() => {});
     }
     this.updateStatus();
   }
 
   updateStatus(customMessage = null) {
-    if (!this.elements.status) return;
+    const { status, metronomeTimeSignature } = this.elements;
+    if (!status) return;
 
-    this.elements.status.classList.remove("enabled", "error");
+    status.classList.remove("enabled", "error");
 
     if (customMessage) {
-      this.elements.status.textContent = `(${customMessage})`;
-      this.elements.status.classList.add("error");
+      status.textContent = `(${customMessage})`;
+      status.classList.add("error");
       return;
     }
 
-    const timeSignature = this.elements.metronomeTimeSignature?.value || "4/4";
-    this.elements.status.textContent = `(${this.selectedOutput?.name || "No MIDI device"} / ${this.bpm} BPM / ${timeSignature})`;
-    if (!this.bpmValid || (this.enabled && !this.selectedOutput)) {
-      this.elements.status.classList.add("error");
-    } else if (this.enabled && this.selectedOutput) {
-      this.elements.status.classList.add("enabled");
-    }
+    const timeSignature = metronomeTimeSignature?.value || "4/4";
+    const timeStr = this.formatTime(this.startTime || 0);
+    status.textContent = `(${this.selectedOutput?.name || "No MIDI device"} | ${this.bpm} BPM | ${timeStr} | ${timeSignature})`;
+    
+    const hasError = !this.bpmValid || (this.enabled && !this.selectedOutput);
+    status.classList.toggle("error", hasError);
+    status.classList.toggle("enabled", !hasError && this.enabled && this.selectedOutput);
   }
 
   async initMetronome() {
     this.metronomeAudioContext = new (window.AudioContext || window.webkitAudioContext)();
     
+    // Create merger for channel routing
+    const maxChannels = Math.max(this.metronomeAudioContext.destination.maxChannelCount, 18);
+    this.metronomeChannelMerger = this.metronomeAudioContext.createChannelMerger(maxChannels);
+    this.metronomeChannelMerger.channelCountMode = "explicit";
+    this.metronomeChannelMerger.channelInterpretation = "discrete";
+    this.metronomeChannelMerger.connect(this.metronomeAudioContext.destination);
+    
     this.metronomeMasterGain = this.metronomeAudioContext.createGain();
-    this.metronomeMasterGain.connect(this.metronomeAudioContext.destination);
     this.metronomeMasterGain.gain.value = 1.0;
+    
+    // Connect to default channel (1)
+    this.connectMetronomeToChannel(1);
     
     this.registerWithMasterVolume();
     await this.populateAudioDevices();
+    await this.populateChannelOptions();
   }
 
   registerWithMasterVolume() {
@@ -182,7 +203,6 @@ class MIDIBpm {
     if (container?.masterGains) {
       if (!container.masterGains.includes(this.metronomeMasterGain)) {
         container.masterGains.push(this.metronomeMasterGain);
-        console.log('Metronome registered with master volume system');
       }
       if (container.masterVolume !== undefined) {
         this.metronomeMasterGain.gain.value = container.masterVolume;
@@ -202,9 +222,57 @@ class MIDIBpm {
       
       metronomeDeviceSelect.innerHTML = '<option value="">Default Audio Output</option>' +
         audioOutputs.map(d => `<option value="${d.deviceId}">${d.label || `Audio Output ${d.deviceId.slice(0, 8)}`}</option>`).join('');
-    } catch (error) {
-      console.error('Error enumerating audio devices:', error);
+      
+      // Add change listener to update channels when device changes
+      metronomeDeviceSelect.addEventListener('change', () => {
+        this.populateChannelOptions();
+      });
+    } catch (error) {}
+  }
+
+  async populateChannelOptions() {
+    const { metronomeChannelSelect, metronomeDeviceSelect } = this.elements;
+    if (!metronomeChannelSelect) return;
+
+    const deviceId = metronomeDeviceSelect?.value || '';
+    const maxChannels = await this.getMaxChannelsForDevice(deviceId);
+    
+    metronomeChannelSelect.innerHTML = Array.from({ length: maxChannels }, (_, i) => 
+      `<option value="${i + 1}">Channel ${i + 1}</option>`
+    ).join('');
+    metronomeChannelSelect.value = this.metronomeChannel;
+    
+    if (!metronomeChannelSelect._listenerAdded) {
+      metronomeChannelSelect._listenerAdded = true;
+      metronomeChannelSelect.addEventListener('change', () => {
+        this.metronomeChannel = parseInt(metronomeChannelSelect.value) || 1;
+        this.connectMetronomeToChannel(this.metronomeChannel);
+      });
     }
+  }
+
+  async getMaxChannelsForDevice(deviceId) {
+    let context;
+    try {
+      context = new (window.AudioContext || window.webkitAudioContext)();
+      if (deviceId && context.setSinkId) {
+        await context.setSinkId(deviceId);
+      }
+      return context.destination.maxChannelCount;
+    } catch (error) {
+      return 18;
+    } finally {
+      if (context) context.close();
+    }
+  }
+
+  connectMetronomeToChannel(channelNumber) {
+    if (!this.metronomeMasterGain || !this.metronomeChannelMerger) return;
+    
+    try {
+      this.metronomeMasterGain.disconnect();
+      this.metronomeMasterGain.connect(this.metronomeChannelMerger, 0, channelNumber - 1);
+    } catch (error) {}
   }
 
   playMetronomeClick(isBeat1 = false) {
@@ -213,24 +281,22 @@ class MIDIBpm {
     const ctx = this.metronomeAudioContext;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    const now = ctx.currentTime;
 
     osc.frequency.value = isBeat1 ? 1000 : 800;
     gain.gain.value = (isBeat1 ? 0.6 : 0.4) * this.metronomeVolume;
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
 
     osc.connect(gain).connect(this.metronomeMasterGain);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.05);
+    osc.start(now);
+    osc.stop(now + 0.05);
   }
 
   sendMIDI(data) {
-    if (this.enabled && this.selectedOutput && this.bpmValid) {
-      try {
-        this.selectedOutput.send(data);
-      } catch (error) {
-        console.error("Failed to send MIDI message:", error);
-      }
-    }
+    if (!this.enabled || !this.selectedOutput || !this.bpmValid) return;
+    try {
+      this.selectedOutput.send(data);
+    } catch (error) {}
   }
 
   createTickFunction() {
@@ -240,13 +306,8 @@ class MIDIBpm {
     const tick = () => {
       if (!this.isPlaying) return;
       
-      this.sendMIDI([0xF8]);
-      
-      if (++tickCount >= this.PPQN) {
-        tickCount = 0;
-        this.beatCounter = (this.beatCounter % this.beatsPerBar) + 1;
-        this.playMetronomeClick(this.beatCounter === 1);
-      }
+      if (this.midiStartSent) this.sendMIDI([0xF8]);
+      if (++tickCount >= this.PPQN) tickCount = 0;
       
       this.expectedNextTime += intervalMs;
       this.clockInterval = setTimeout(tick, Math.max(0, intervalMs - (performance.now() - this.expectedNextTime)));
@@ -259,17 +320,14 @@ class MIDIBpm {
 
     this.isPlaying = true;
     this.beatCounter = 0;
+    this.lastTriggeredBeat = -1;
+    this.midiStartSent = false;
+    this.midiStartCommand = midiCommand;
     this.updateStatus();
-    this.sendMIDI([midiCommand]);
-
-    // Play first beat immediately
-    this.beatCounter = 1;
-    this.playMetronomeClick(true);
 
     const intervalMs = 60000 / this.bpm / this.PPQN;
     this.expectedNextTime = performance.now() + intervalMs;
     this.clockInterval = setTimeout(this.createTickFunction(), intervalMs);
-    console.log(`MIDI Clock ${midiCommand === 0xFA ? 'started' : 'continued'} at ${this.bpm} BPM`);
   }
 
   start() { this.startClock(0xFA); }
@@ -282,7 +340,6 @@ class MIDIBpm {
     this.sendMIDI([0xFC]);
     if (this.clockInterval) clearTimeout(this.clockInterval);
     this.clockInterval = null;
-    console.log("MIDI Clock stopped");
   }
 
   updateBPM(newBPM) {
@@ -303,18 +360,16 @@ class MIDIBpm {
   restart() {
     if (!this.enabled || !this.isPlaying) return;
 
-    this.showSendMessage();
-    this.sendMIDI([0xFC]);
+    if (this.midiStartSent) this.sendMIDI([0xFC]);
     if (this.clockInterval) clearTimeout(this.clockInterval);
+    
     this.clockInterval = null;
+    this.firstBeatTriggered = false;
+    this.lastTriggeredBeat = -1;
+    this.midiStartSent = false;
 
     setTimeout(() => {
-      this.sendMIDI([0xFA]);
-      
-      // Play first beat immediately
-      this.beatCounter = 1;
-      this.playMetronomeClick(true);
-      
+      this.beatCounter = 0;
       const intervalMs = 60000 / this.bpm / this.PPQN;
       this.expectedNextTime = performance.now() + intervalMs;
       this.clockInterval = setTimeout(this.createTickFunction(), intervalMs);
@@ -322,12 +377,62 @@ class MIDIBpm {
   }
 
   showSendMessage() {
-    if (!this.elements.status) return;
-    const timeSignature = this.elements.metronomeTimeSignature?.value || "4/4";
-    this.elements.status.textContent = `(${this.selectedOutput?.name || "No MIDI device"} / ${this.bpm} BPM / ${timeSignature} – SEND FIRST BEAT)`;
-    this.elements.status.classList.remove("error");
-    this.elements.status.classList.add("enabled");
+    const { status, metronomeTimeSignature } = this.elements;
+    if (!status) return;
+    const timeSignature = metronomeTimeSignature?.value || "4/4";
+    status.textContent = `(${this.selectedOutput?.name || "No MIDI device"} | ${this.bpm} BPM | ${this.formatTime(this.startTime)} | ${timeSignature} – SEND FIRST BEAT)`;
+    status.classList.remove("error");
+    status.classList.add("enabled");
     setTimeout(() => this.updateStatus(), 2000);
+  }
+
+  parseTime(timeStr) {
+    const parts = timeStr.split(':').map(p => parseInt(p) || 0);
+    if (parts.length !== 3) return 0;
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+
+  formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  checkStartTime(currentTime) {
+    if (!this.enabled || !this.isPlaying) return;
+    
+    const tolerance = 0.05;
+    
+    if (!this.midiStartSent && currentTime >= this.startTime - tolerance) {
+      this.midiStartSent = true;
+      this.sendMIDI([this.midiStartCommand || 0xFA]);
+    }
+    
+    const beatInterval = 60 / this.bpm;
+    const beatNumber = Math.floor((currentTime - this.startTime) / beatInterval);
+    const beatTime = this.startTime + (beatNumber * beatInterval);
+    
+    if (Math.abs(currentTime - beatTime) <= tolerance && beatNumber !== this.lastTriggeredBeat) {
+      this.lastTriggeredBeat = beatNumber;
+      const beatInBar = ((beatNumber % this.beatsPerBar) + this.beatsPerBar) % this.beatsPerBar + 1;
+      this.beatCounter = beatInBar;
+      
+      if (currentTime >= this.startTime - tolerance) {
+        this.playMetronomeClick(beatInBar === 1);
+        
+        if (beatInBar === 1 && !this.firstBeatTriggered) {
+          this.firstBeatTriggered = true;
+          this.showSendMessage();
+        }
+      }
+    }
+  }
+
+  resetFirstBeat() {
+    this.firstBeatTriggered = false;
+    this.lastTriggeredBeat = -1;
+    this.midiStartSent = false;
   }
 }
 

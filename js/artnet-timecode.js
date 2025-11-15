@@ -133,7 +133,7 @@ class ArtNetTimecode {
       ? "connected"
       : "disabled";
 
-    this.elements.status.textContent = `(${this.ip}:${this.port} / ${this.fps}fps / ${currentTimecode})`;
+    this.elements.status.textContent = `(${this.ip}:${this.port} | ${this.fps}fps | ${currentTimecode})`;
     this.elements.status.className = `artnet-status ${statusClass}`;
   }
 

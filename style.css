@@ -126,6 +126,10 @@ input[id^="udp-trigger-ip-"] {
   padding: 0.25rem 0;
 }
 
+.midi-bpm-settings .audio-device-row {
+  margin-bottom: 0.5rem;
+}
+
 .video-window-body {
   margin: 0;
   padding: 0;
