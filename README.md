@@ -23,6 +23,7 @@ node server.js
 - The web interface opens by default at `localhost:3001`.
 - Supported file formats: `MP3`, `WAV`, `MP4`, `MOV` (max. 16 GB per file).
 - Make sure your computer can handle multiple media players running at the same time; otherwise, it could cause lag.
+- Bugs could exist!
 
 ## Debug:
 
