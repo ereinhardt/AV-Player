@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Player</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: black;
+        overflow: hidden;
+      }
+      #video-player {
+        width: 100vw;
+        height: 100vh;
+        object-fit: contain;
+        background: black;
+      }
+      #black-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: black;
+        z-index: 9999;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <video id="video-player" muted></video>
+    <div id="black-overlay"></div>
+    <script>
+      const video = document.getElementById("video-player"),
+        overlay = document.getElementById("black-overlay");
+      let ended = false,
+        looping = false,
+        loopEnabled = false,
+        resizeSyncTimer = null;
+
+      const atEnd = () =>
+        video.ended ||
+        (video.duration && video.currentTime >= video.duration - 0.1);
+      const showOverlay = () =>
+        (overlay.style.display = ended ? "block" : "none");
+      const syncToOpener = () => {
+        try {
+          // Ask opener to resync ALL video windows, not just this one,
+          // so the other windows stay in sync with the audio too.
+          if (window.opener?.videoManager?.resyncAll) {
+            window.opener.videoManager.resyncAll();
+            return;
+          }
+          const pos = window.opener?._lastAudioPosition?.position;
+          if (typeof pos !== "number" || ended) return;
+          video.currentTime = pos;
+          if (
+            window.opener?.document
+              .getElementById("play-pause-button")
+              ?.classList.contains("playing")
+          )
+            video.play().catch(() => {});
+        } catch {}
+      };
+
+      const reset = (play = false) => {
+        ended = false;
+        video.pause();
+        video.currentTime = 0;
+        showOverlay();
+        if (play) {
+          looping = true;
+          video
+            .play()
+            .then(() => {
+              looping = ended = false;
+            })
+            .catch(() => (looping = false));
+        }
+      };
+
+      const handlers = {
+        LOAD_VIDEO: (d) => {
+          ended = looping = false;
+          video.src = d.url;
+          showOverlay();
+        },
+        PLAY: () => {
+          if ((!ended && !video.ended) || looping) {
+            ended = false;
+            video.play().catch(() => {});
+          }
+          showOverlay();
+        },
+        PAUSE: () => {
+          video.pause();
+          showOverlay();
+        },
+        SEEK: (d) => {
+          if (d?.time === undefined) return;
+          // When looping, allow seek even if ended (position resets to 0)
+          if (
+            ended &&
+            loopEnabled &&
+            d.time < (video.duration || Infinity) - 1
+          ) {
+            ended = false;
+            showOverlay();
+          }
+          if (!ended) video.currentTime = d.time;
+        },
+        SET_TITLE: (d) => {
+          if (d?.title) document.title = d.title;
+        },
+        SET_LOOP: (d) => {
+          loopEnabled = !!d?.loop;
+        },
+        RESTART_VIDEO: () => reset(true),
+        RESET_VIDEO: () => reset(false),
+      };
+
+      window.addEventListener("message", (e) => {
+        if (e.origin === location.origin) handlers[e.data.type]?.(e.data.data);
+      });
+
+      video.addEventListener("play", () => {
+        ended = false;
+        showOverlay();
+      });
+      video.addEventListener("pause", showOverlay);
+      video.addEventListener("timeupdate", () => {
+        const was = ended;
+        ended = atEnd();
+        if (ended !== was) showOverlay();
+      });
+      video.addEventListener("ended", () => {
+        ended = true;
+        showOverlay();
+      });
+      video.addEventListener("seeked", () => {
+        ended = atEnd();
+        showOverlay();
+      });
+      video.addEventListener("contextmenu", (e) => e.preventDefault());
+      video.addEventListener("click", (e) => e.preventDefault());
+
+      showOverlay();
+      const scheduleResync = (delay = 250) => {
+        clearTimeout(resizeSyncTimer);
+        resizeSyncTimer = setTimeout(syncToOpener, delay);
+      };
+      window.addEventListener("resize", () => scheduleResync(250));
+      document.addEventListener("fullscreenchange", () => scheduleResync(400));
+      document.addEventListener("webkitfullscreenchange", () =>
+        scheduleResync(400),
+      );
+      window.addEventListener("load", () => {
+        try {
+          window.opener?.postMessage(
+            { type: "VIDEO_WINDOW_READY" },
+            location.origin,
+          );
+        } catch {}
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,233 @@
+h1 {
+  margin-top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Common box styling */
+.controls,
+.timing-container,
+.udp-triggers-container,
+.osc-triggers-container,
+.audio-tracks-container,
+.video-tracks-container,
+.artnet-settings,
+.midi-bpm-settings,
+.udp-trigger-settings,
+.osc-trigger-settings,
+.udp-receive-settings,
+.audio-track,
+.video-track {
+  border: 1px solid silver;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Remove bottom margin for last child and nested boxes */
+.udp-trigger-settings:last-child,
+.osc-trigger-settings:last-child,
+.audio-track:last-child,
+.video-track:last-child,
+.midi-bpm-settings,
+.udp-receive-settings {
+  margin-bottom: 0;
+}
+
+/* Section titles */
+h2.controls-title,
+h2.timing-title,
+h2.udp-triggers-title,
+h2.osc-triggers-title,
+h2.audio-tracks-title,
+h2.video-tracks-title {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.artnet-title,
+.midi-bpm-title,
+.udp-trigger-title,
+.udp-receive-title,
+.osc-trigger-title {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+/* Control and setting groups */
+.control-group {
+  margin-bottom: 1rem;
+}
+
+.control-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.setting-group {
+  margin-bottom: 0.5rem;
+}
+
+.setting-group:last-child {
+  margin-bottom: 0;
+}
+
+.master-controls {
+  margin-top: 0;
+}
+
+#track-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide IP text input fields (not the select dropdowns) */
+input#artnet-ip,
+input#osc-trigger-ip,
+input[id^="osc-trigger-ip-"],
+input#udp-trigger-ip,
+input[id^="udp-trigger-ip-"] {
+  display: none;
+  margin-left: 0.5rem;
+}
+
+/* Track info */
+.track-info {
+  margin-bottom: 0.5rem;
+}
+
+.track-info label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* Flex row layouts */
+.track-file-controls,
+.video-track-controls,
+.timeline-wrapper,
+.track-controls,
+.audio-device-row,
+.audio-control-row,
+.video-device-row,
+.video-control-row,
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.video-track-controls {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.device-label,
+.channel-label {
+  white-space: nowrap;
+}
+
+.timeline-progress {
+  flex-grow: 1;
+}
+
+.track-controls {
+  margin-top: 0.5rem;
+}
+
+.video-track .track-controls {
+  margin-top: 0.25rem;
+}
+
+.audio-track .track-controls {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.video-device-row {
+  padding: 0.25rem 0;
+}
+
+.midi-bpm-settings .audio-device-row {
+  margin-bottom: 0.5rem;
+}
+
+/* Video window */
+.video-window-body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.video-window-video {
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
+}
+
+/* Status indicators */
+.artnet-status,
+.midi-bpm-status,
+.udp-trigger-status,
+.udp-receive-status,
+.osc-trigger-status {
+  color: #000;
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.artnet-status.connected,
+.midi-bpm-status.enabled,
+.udp-trigger-status.enabled,
+.udp-receive-status.enabled,
+.osc-trigger-status.enabled {
+  color: #00ff00;
+}
+
+.artnet-status.error,
+.midi-bpm-status.error,
+.udp-trigger-status.error,
+.udp-receive-status.error,
+.osc-trigger-status.error {
+  color: #ff0000;
+}
+
+.ip-info {
+  margin-left: 0.5rem;
+}
+
+/* VU Meter */
+.vu-meter {
+  display: flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  width: 130px;
+  height: 8px;
+  background: #000;
+  padding: 1px;
+  overflow: hidden;
+}
+.vu-bar {
+  height: 100%;
+  width: 0%;
+  background: #00ff00;
+  transition: width 16ms linear;
+}
+.vu-bar.vu-hot { background: orange; }
+.vu-bar.vu-clip { background: #ff0000; }
+.vu-db {
+  white-space: nowrap;
+}
